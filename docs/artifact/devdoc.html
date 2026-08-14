@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<title>耳机控制台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#f6f8fa; --surface:#ffffff; --surface2:#edf1f5; --surface3:#e4eaf0;
+    --border:#d9e0e7; --border-strong:#c3ccd6;
+    --text:#18222d; --muted:#5a6a79; --faint:#8a97a4;
+    --accent:#0b6bcb; --accent-soft:#e3f0fb; --accent-ink:#ffffff;
+    --code-bg:#f1f4f7;
+    --chip-high:#b42318; --chip-high-bg:#fdecea;
+    --chip-mid:#b54708; --chip-mid-bg:#fef0e3;
+    --chip-low:#067647; --chip-low-bg:#e8f6ef;
+    --info:#0b6bcb; --info-bg:#e3f0fb;
+    --kbd:#ffffff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b1016; --surface:#11171f; --surface2:#161d27; --surface3:#1c2531;
+      --border:#27313d; --border-strong:#35414f;
+      --text:#e6edf4; --muted:#9aa9b8; --faint:#6d7c8b;
+      --accent:#4ea1ff; --accent-soft:#14283f; --accent-ink:#0b1016;
+      --code-bg:#0f151c;
+      --chip-high:#ff8a80; --chip-high-bg:#3a1b18;
+      --chip-mid:#ffc98a; --chip-mid-bg:#3a2a12;
+      --chip-low:#8bddb0; --chip-low-bg:#143527;
+      --info:#6fb5ff; --info-bg:#122a40;
+      --kbd:#1b2430;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b1016; --surface:#11171f; --surface2:#161d27; --surface3:#1c2531;
+    --border:#27313d; --border-strong:#35414f;
+    --text:#e6edf4; --muted:#9aa9b8; --faint:#6d7c8b;
+    --accent:#4ea1ff; --accent-soft:#14283f; --accent-ink:#0b1016;
+    --code-bg:#0f151c;
+    --chip-high:#ff8a80; --chip-high-bg:#3a1b18;
+    --chip-mid:#ffc98a; --chip-mid-bg:#3a2a12;
+    --chip-low:#8bddb0; --chip-low-bg:#143527;
+    --info:#6fb5ff; --info-bg:#122a40;
+    --kbd:#1b2430;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    font-size:15px; line-height:1.72;
+  }
+  ::selection{background:var(--accent-soft)}
+  a{color:var(--accent); text-decoration:none; border-bottom:1px solid transparent}
+  a:hover{border-bottom-color:var(--accent)}
+  .shell{display:grid; grid-template-columns:236px minmax(0,1fr); max-width:1180px; margin:0 auto}
+  header.top{
+    position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--border);
+  }
+  header.top .inner{max-width:1180px; margin:0 auto; padding:14px 28px; display:flex; align-items:baseline; gap:14px}
+  .brand{font-weight:700; font-size:16px; letter-spacing:.2px}
+  .brand .accent{color:var(--accent)}
+  .brand small{margin-left:10px; color:var(--faint); font-weight:500; font-size:12.5px}
+  .ver{margin-left:auto; font-size:12px; color:var(--muted); font-family:Consolas,"Cascadia Code",monospace}
+  nav.toc{
+    position:sticky; top:53px; align-self:start; max-height:calc(100vh - 64px);
+    overflow-y:auto; padding:26px 14px 30px 28px; border-right:1px solid var(--border); font-size:13px;
+  }
+  nav.toc .tlabel{font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--faint); margin:0 0 10px 6px; font-weight:600}
+  nav.toc a{display:block; color:var(--muted); padding:5px 6px; border-radius:6px; border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--text); background:var(--surface2); border-bottom-color:transparent}
+  nav.toc a.l2{padding-left:18px; color:var(--faint); font-size:12.5px}
+  nav.toc a.current{color:var(--accent); border-left-color:var(--accent); font-weight:600}
+  main{padding:34px 44px 80px; min-width:0}
+  main .inner{max-width:840px}
+  .hero{margin-bottom:34px}
+  .hero .eyebrow{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700}
+  .hero h1{font-size:30px; line-height:1.2; margin:10px 0 8px; letter-spacing:-.3px; text-wrap:balance}
+  .hero .sub{color:var(--muted); max-width:66ch}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:18px}
+  .meta span{font-size:12.5px; padding:4px 10px; border:1px solid var(--border); border-radius:999px; color:var(--muted); background:var(--surface)}
+  .meta span b{color:var(--text); font-weight:600}
+  h2{font-size:21px; margin:52px 0 6px; padding-top:16px; letter-spacing:-.2px}
+  h2 .no{color:var(--accent); font-family:Consolas,monospace; font-size:15px; font-weight:700; margin-right:10px; vertical-align:2px}
+  h2 + p.lead{color:var(--muted); margin:0 0 18px; max-width:72ch}
+  h3{font-size:16px; margin:28px 0 8px}
+  h4{font-size:14px; margin:20px 0 6px; color:var(--muted)}
+  p{margin:10px 0}
+  ul,ol{margin:8px 0 12px; padding-left:22px}
+  li{margin:4px 0}
+  code{font-family:"Cascadia Code",Consolas,"JetBrains Mono",monospace; font-size:0.88em; background:var(--code-bg); border:1px solid var(--border); border-radius:5px; padding:1px 6px}
+  pre{background:var(--code-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; overflow-x:auto; line-height:1.6; font-size:12.8px; margin:14px 0}
+  pre code{background:none; border:none; padding:0; font-size:inherit}
+  .tablewrap{overflow-x:auto; border:1px solid var(--border); border-radius:10px; margin:14px 0; background:var(--surface)}
+  table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:620px}
+  th{background:var(--surface2); text-align:left; padding:9px 12px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border-strong); white-space:nowrap}
+  td{padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td:first-child,th:first-child{white-space:nowrap}
+  .tabnum,td{font-variant-numeric:tabular-nums}
+  .chip{display:inline-block; font-size:11.5px; font-weight:600; padding:2px 9px; border-radius:999px; white-space:nowrap}
+  .chip.high{color:var(--chip-high); background:var(--chip-high-bg)}
+  .chip.mid{color:var(--chip-mid); background:var(--chip-mid-bg)}
+  .chip.low{color:var(--chip-low); background:var(--chip-low-bg)}
+  .chip.p0{color:var(--accent); background:var(--accent-soft)}
+  .chip.p1{color:var(--muted); background:var(--surface2)}
+  .chip.p2{color:var(--faint); background:var(--surface3)}
+  .prio{display:inline-block; font-size:11px; font-weight:700; padding:1px 8px; border-radius:5px; margin-right:6px; vertical-align:1px}
+  .prio.p0{color:var(--accent); background:var(--accent-soft)}
+  .prio.p1{color:var(--muted); background:var(--surface2)}
+  .prio.p2{color:var(--faint); background:var(--surface3)}
+  .callout{border:1px solid var(--border); border-left:4px solid var(--accent); background:var(--surface); border-radius:10px; padding:12px 16px; margin:16px 0; font-size:14px}
+  .callout.warn{border-left-color:var(--chip-mid)}
+  .callout.warn .ct{color:var(--chip-mid); font-weight:700}
+  .callout .ct{color:var(--accent); font-weight:700}
+  .arch{font-family:"Cascadia Code",Consolas,monospace; font-size:12.3px; line-height:1.55; background:var(--code-bg); border:1px solid var(--border); border-radius:10px; padding:16px; overflow-x:auto; white-space:pre}
+  .flow{font-family:"Cascadia Code",Consolas,monospace; font-size:12.3px; background:var(--code-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; overflow-x:auto; white-space:pre; line-height:1.6}
+  blockquote{margin:14px 0; padding:10px 16px; border-left:4px solid var(--border-strong); color:var(--muted); background:var(--surface2); border-radius:0 10px 10px 0}
+  .check{list-style:none; padding-left:4px}
+  .check li{padding-left:26px; position:relative}
+  .check li::before{content:"▢"; position:absolute; left:2px; color:var(--accent); font-weight:700}
+  .footnote{color:var(--faint); font-size:12px; margin-top:4px}
+  hr{border:none; border-top:1px solid var(--border); margin:40px 0}
+  @media (max-width:900px){
+    .shell{grid-template-columns:1fr}
+    nav.toc{position:static; max-height:none; border-right:none; border-bottom:1px solid var(--border); padding:14px 28px; display:none}
+    main{padding:24px 20px 60px}
+    header.top .inner{padding:12px 20px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+  }
+</style>
+
+<div class="shell">
+
+  <nav class="toc" id="toc">
+    <p class="tlabel">目录</p>
+    <a href="#s1" class="l1">1 · 项目概述</a>
+    <a href="#s2" class="l1">2 · 技术调研结论</a>
+    <a href="#s21" class="l2">2.1 耳机硬件方案</a>
+    <a href="#s22" class="l2">2.2 蓝牙访问选型</a>
+    <a href="#s23" class="l2">2.3 电量获取</a>
+    <a href="#s24" class="l2">2.4 降噪控制</a>
+    <a href="#s3" class="l1">3 · 总体架构</a>
+    <a href="#s4" class="l1">4 · 详细设计</a>
+    <a href="#s5" class="l1">5 · 代码规范</a>
+    <a href="#s6" class="l1">6 · 工程结构与构建</a>
+    <a href="#s7" class="l1">7 · 协议逆向方案</a>
+    <a href="#s8" class="l1">8 · 开发计划</a>
+    <a href="#s9" class="l1">9 · 风险与应对</a>
+    <a href="#s10" class="l1">附录 · 参考资料</a>
+  </nav>
+
+  <main>
+    <div class="inner">
+
+      <div class="hero">
+        <div class="eyebrow">开发文档 · 设计稿 v0.1</div>
+        <h1>原道「原点」降噪耳机 · Windows 控制台</h1>
+        <p class="sub">连接 TWS 蓝牙耳机后显示设备名称与左右耳独立电量，并直接切换「降噪 / 通透 / 关闭」。基于恒玄 BES2700 方案，技术栈 C#/.NET 8 + WPF。</p>
+        <div class="meta">
+          <span>技术栈 <b>C# · .NET 8 · WPF</b></span>
+          <span>蓝牙通道 <b>WinRT GATT</b></span>
+          <span>目标设备 <b>原道 OriG in 原点</b></span>
+          <span>日期 <b>2026-08-13</b></span>
+        </div>
+      </div>
+
+      <h2 id="s1"><span class="no">01</span>项目概述</h2>
+      <h3>1.1 背景</h3>
+      <p>原道 OriG in「原点」是主打高性价比的旗舰降噪 TWS 耳机，搭载恒玄 <b>BES2700</b> 系列蓝牙音频 SoC，支持 55dB 主动降噪、通透模式、入耳检测、LHDC V5 等特性。其降噪切换与左右耳独立电量等能力仅通过厂商「原道 YUANDAO」手机 APP 暴露，<b>Windows 系统本身不提供任何控制入口</b>。本工具在 Windows 桌面补齐这一能力。</p>
+
+      <h3>1.2 目标</h3>
+      <ul>
+        <li>交付可直接运行的 Windows EXE（绿色版，免安装）；</li>
+        <li>连接 / 识别耳机，显示蓝牙名称与<b>左右耳独立电量</b>；</li>
+        <li>支持「降噪 / 通透 / 关闭」三态切换；</li>
+        <li>分层架构清晰、协议可插拔，便于未来适配其他品牌；</li>
+        <li>代码规范统一，可测试、可维护、可扩展。</li>
+      </ul>
+
+      <h3>1.3 功能需求（FR）</h3>
+      <div class="tablewrap"><table>
+        <tr><th>编号</th><th>需求</th><th>优先级</th><th>说明</th></tr>
+        <tr><td>FR-01</td><td>蓝牙扫描与列表</td><td><span class="prio p0">P0</span></td><td>扫描附近设备，过滤出耳机</td></tr>
+        <tr><td>FR-02</td><td>连接 / 断开</td><td><span class="prio p0">P0</span></td><td>建立 BLE GATT 连接，断开释放资源</td></tr>
+        <tr><td>FR-03</td><td>显示设备名称</td><td><span class="prio p0">P0</span></td><td>广播名或 0x180A 设备信息服务</td></tr>
+        <tr><td>FR-04</td><td>显示左右耳电量</td><td><span class="prio p0">P0</span></td><td>左 / 右独立百分比，实时刷新</td></tr>
+        <tr><td>FR-05</td><td>充电盒电量（如支持）</td><td><span class="prio p1">P1</span></td><td>BES 私有特征通常附带，逆向后启用</td></tr>
+        <tr><td>FR-06</td><td>降噪模式切换</td><td><span class="prio p0">P0</span></td><td>降噪 / 通透 / 关闭</td></tr>
+        <tr><td>FR-07</td><td>电量实时订阅</td><td><span class="prio p0">P0</span></td><td>GATT Notify，免轮询</td></tr>
+        <tr><td>FR-08</td><td>自动重连恢复</td><td><span class="prio p1">P1</span></td><td>断连重连，恢复降噪状态显示</td></tr>
+        <tr><td>FR-09</td><td>系统托盘常驻</td><td><span class="prio p2">P2</span></td><td>最小化到托盘快捷切换</td></tr>
+        <tr><td>FR-10</td><td>协议探测模式（调试）</td><td><span class="prio p1">P1</span></td><td>展示完整 GATT 表，辅助逆向</td></tr>
+      </table></div>
+
+      <h3>1.4 非功能需求（NFR）</h3>
+      <div class="tablewrap"><table>
+        <tr><th>编号</th><th>需求</th><th>说明</th></tr>
+        <tr><td>NFR-01</td><td>性能</td><td>电量刷新延迟 ≤ 2s；UI 不被蓝牙 IO 阻塞</td></tr>
+        <tr><td>NFR-02</td><td>稳定性</td><td>断连 / 重连 / 热插拔适配器不崩溃</td></tr>
+        <tr><td>NFR-03</td><td>可维护性</td><td>严格分层，依赖单向，接口通信</td></tr>
+        <tr><td>NFR-04</td><td>可扩展性</td><td>协议适配器可插拔，新增品牌仅加一个实现</td></tr>
+        <tr><td>NFR-05</td><td>安全性</td><td>仅蓝牙必需权限，数据不联网</td></tr>
+        <tr><td>NFR-06</td><td>可测试性</td><td>核心逻辑与 WinRT 硬件解耦，可单元测试</td></tr>
+      </table></div>
+
+      <h2 id="s2"><span class="no">02</span>技术调研结论</h2>
+      <p class="lead">调研覆盖：目标耳机硬件方案、Windows 蓝牙 API 选型、电量与降噪控制协议、UI 技术栈。</p>
+
+      <h3 id="s21">2.1 目标耳机硬件方案</h3>
+      <div class="tablewrap"><table>
+        <tr><th>项</th><th>结论</th></tr>
+        <tr><td>主控 SoC</td><td>恒玄 BES2700 系列（双模：BR/EDR 音频 + BLE 控制）</td></tr>
+        <tr><td>编解码</td><td>LHDC V5，最高 24bit/192kHz</td></tr>
+        <tr><td>降噪</td><td>55dB 极限深度，降噪 / 通透通过 APP 切换</td></tr>
+        <tr><td>配套 APP</td><td>「原道 YUANDAO」（音效、降噪、入耳检测设置）</td></tr>
+        <tr><td>入耳检测 / 双设备</td><td>均有硬件与固件支持</td></tr>
+      </table></div>
+      <p><b>关键推论：</b></p>
+      <ol>
+        <li>耳机具备 BLE 通道，控制能力必然通过 BLE GATT <b>私有服务</b>暴露——官方 APP 即通过 BLE 连接；</li>
+        <li>BES 方案在国产 TWS 中应用极广，BLE 控制通道有方案级通用性，但原道会定制 UUID 与命令结构，<b>不能直接套用其他 BES 机型的协议</b>；</li>
+        <li>私有协议目前无公开文档，需要按第 7 章方法逆向。</li>
+      </ol>
+      <div class="callout warn">
+        <span class="ct">⚠ 最大不确定点</span> — 若原道对 BLE 命令做了加密 / 签名（类似华为 FreeBuds 的加密握手），逆向成本显著上升。落地前必须先完成协议探测（第 7 章）。
+      </div>
+
+      <h3 id="s22">2.2 Windows 蓝牙访问选型</h3>
+      <div class="tablewrap"><table>
+        <tr><th>方案</th><th>说明</th><th>结论</th></tr>
+        <tr><td><b>WinRT Windows.Devices.Bluetooth（GATT）</b></td><td>官方 API，DualApiPartitioned，桌面应用可用；WPF 通过 <code>net8.0-windows10.0.19041.0</code> TFM 自动获得投影</td><td><span class="chip low">✅ 采用</span></td></tr>
+        <tr><td>Win32 GATT（BluetoothGATTGetServices）</td><td>底层 C API，P/Invoke 工作量大</td><td><span class="chip mid">弃用</span></td></tr>
+        <tr><td>InTheHand.Net（32feet.NET）</td><td>第三方跨平台库，WinRT/LE 支持较弱</td><td><span class="chip mid">弃用</span></td></tr>
+        <tr><td>btleplug / bleak（其他语言）</td><td>不适合 C# 选型</td><td><span class="chip mid">弃用</span></td></tr>
+      </table></div>
+      <p>WPF 正确引用 WinRT 的关键配置（避免 CS0234「Windows 命名空间不存在」）：</p>
+<pre><code>&lt;!-- src/YuandaoTws.App/YuandaoTws.App.csproj --&gt;
+&lt;Project Sdk="Microsoft.NET.Sdk"&gt;
+  &lt;PropertyGroup&gt;
+    &lt;OutputType&gt;WinExe&lt;/OutputType&gt;
+    &lt;TargetFramework&gt;net8.0-windows10.0.19041.0&lt;/TargetFramework&gt;  &lt;!-- 关键：带 windows10.x TFM --&gt;
+    &lt;UseWPF&gt;true&lt;/UseWPF&gt;
+    &lt;Nullable&gt;enable&lt;/Nullable&gt;
+    &lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt;
+    &lt;PublishSingleFile&gt;true&lt;/PublishSingleFile&gt;
+    &lt;SelfContained&gt;true&lt;/SelfContained&gt;
+  &lt;/PropertyGroup&gt;
+&lt;/Project&gt;</code></pre>
+      <p><b>Capability 说明：</b>打包（MSIX）应用需在 <code>Package.appxmanifest</code> 声明 <code>&lt;DeviceCapability Name="bluetooth"/&gt;</code>。非打包桌面应用绝大多数 GATT 客户端操作可直接工作；若个别 API 受限，兜底改 MSIX 打包。本项目<b>默认非打包绿色版</b>。</p>
+
+      <h3 id="s23">2.3 电量获取方案</h3>
+      <div class="tablewrap"><table>
+        <tr><th>通道</th><th>UUID</th><th>数据</th><th>说明</th></tr>
+        <tr><td>标准 Battery Service</td><td>Service <code>0x180F</code>，Char <code>0x2A19</code></td><td>1 字节，0–100%</td><td>单个合并值；多数 BES 耳机仅在此暴露单耳 / 盒内总电量</td></tr>
+        <tr><td><b>厂商私有通道（目标）</b></td><td>厂商自定义 128 位 UUID 特征</td><td>多字节：L / R / 盒</td><td><b>真正的左右耳独立电量在这里</b>，需逆向获取</td></tr>
+      </table></div>
+      <p><b>BES 方案常见规律</b>（辅助逆向判断，不保证原道一致）：</p>
+      <ul>
+        <li>私有电量特征通常可 <b>Notify</b>，随电量变化实时推送；</li>
+        <li>有的只支持 Notify、不支持主动 Read（主动 Read 返回 <code>0x00</code> 的已知坑），因此<b>必须订阅 ValueChanged</b>，不能只靠一次性读取；</li>
+        <li>读取字节需按特征 <code>PresentationFormats</code> 指数换算（通常无指数，但需校验）。</li>
+      </ul>
+      <p><b>读取策略：</b></p>
+      <div class="flow">优先级 1：私有特征（左右耳独立） → 解析 L/R 两个百分比，UI 分耳显示
+优先级 2：标准 0x2A19            → 单值，UI 显示为「总电量」，左右耳同值
+订阅 Notify：任何通道都订阅，电量变化实时刷新，不轮询</div>
+
+      <h3 id="s24">2.4 降噪 / 通透控制方案</h3>
+      <p>结论：<b>无通用标准协议，必须走厂商私有 GATT 特征，先逆向再实现。</b></p>
+      <div class="tablewrap"><table>
+        <tr><th>案例</th><th>品牌</th><th>协议特征</th><th>参考价值</th></tr>
+        <tr><td>SonyHeadphonesClient（开源）</td><td>索尼 WH/WF</td><td>0x2B 服务，<code>00002b01-…</code> 特征低位 nibble 即 ANC 等级；Windows 侧用 WinUSB 驱动</td><td>架构、协议解析思路</td></tr>
+        <tr><td>marshall-protocol（开源）</td><td>Marshall Motif II</td><td>私有 UUID 前缀 <code>-1337-1dea-feed-c0ffee70c0de</code>；命令走写特征</td><td>逆向方法论</td></tr>
+        <tr><td>华为 FreeBuds 逆向（博客）</td><td>华为</td><td>BLE 服务带<b>加密握手 + 会话密钥轮换</b></td><td>⚠ 反面教材：加密需评估成本</td></tr>
+      </table></div>
+      <p>模式枚举（领域层）：</p>
+<pre><code>public enum NoiseCancellingMode
+{
+    Unknown = 0,
+    Off,           // 关闭（普通模式）
+    AncOn,         // 降噪
+    Transparency,  // 通透（环境声）
+}</code></pre>
+      <p class="footnote">具体字节值（如 Off=0x00 / ANC=0x01 / Transparency=0x02）在逆向后写入对应品牌适配器，领域层不感知。</p>
+
+      <h3>2.5 UI 技术栈</h3>
+      <div class="tablewrap"><table>
+        <tr><th>项</th><th>选型</th><th>理由</th></tr>
+        <tr><td>UI 框架</td><td>WPF（.NET 8）</td><td>成熟、打包简单、WinRT 互操作顺畅</td></tr>
+        <tr><td>MVVM</td><td>CommunityToolkit.Mvvm</td><td>官方维护、源码生成器</td></tr>
+        <tr><td>DI</td><td>Microsoft.Extensions.DependencyInjection</td><td>标准容器，配合分层</td></tr>
+        <tr><td>日志</td><td>Serilog（滚目录 + 控制台）</td><td>结构化日志，排障必需</td></tr>
+        <tr><td>通知</td><td>Hardcodet.NotifyIcon.Wpf</td><td>托盘常驻切换</td></tr>
+      </table></div>
+
+      <h3>2.6 技术风险总览</h3>
+      <div class="tablewrap"><table>
+        <tr><th>风险</th><th>等级</th><th>对策</th></tr>
+        <tr><td>原道 BLE 私有协议未知</td><td><span class="chip high">高</span></td><td>协议探测前置，不落地不进入功能开发</td></tr>
+        <tr><td>私有命令可能带加密 / 签名</td><td><span class="chip mid">中</span></td><td>逆向阶段判定；加密则降级为电量功能或暂停</td></tr>
+        <tr><td>双耳电量仅 Notify 不支持 Read</td><td><span class="chip mid">中</span></td><td>统一走订阅通道</td></tr>
+        <tr><td>非打包应用 WinRT 受限</td><td><span class="chip low">低</span></td><td>兜底 MSIX 打包</td></tr>
+        <tr><td>固件升级后协议漂移</td><td><span class="chip low">低</span></td><td>适配器版本化，记录固件版本</td></tr>
+        <tr><td>扫描不到 BLE（仅见 BR/EDR）</td><td><span class="chip mid">中</span></td><td>文档注明：首次使用请先在 Windows 蓝牙设置配对</td></tr>
+      </table></div>
+
+      <h2 id="s3"><span class="no">03</span>总体架构</h2>
+      <h3>3.1 设计原则</h3>
+      <ol>
+        <li><b>依赖倒置</b>：跨层依赖指向 Domain 中定义的接口；</li>
+        <li><b>单向依赖</b>：Presentation → Application → Domain；Infrastructure/Protocol 向上实现接口，禁止回环；</li>
+        <li><b>协议可插拔</b>：品牌相关一切隔离在 Protocol 适配器内，领域与界面零感知；</li>
+        <li><b>硬件无关</b>：WinRT 只出现在 Infrastructure 适配层，核心逻辑可脱离真机测试。</li>
+      </ol>
+
+      <h3>3.2 分层架构</h3>
+      <div class="arch">┌─────────────────────────────────────────────────────────────┐
+│  Presentation 层（WPF 界面）                                 │
+│  Views / ViewModels / 托盘 / 绑定 / 事件转发                 │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ 调用用例
+┌───────────────────────────▼─────────────────────────────────┐
+│  Application 层（用例编排）                                  │
+│  HeadsetConnectionService / BatteryMonitorService            │
+│  NoiseCancellingService / 会话管理 / 重连调度                │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ 依赖领域接口
+┌───────────────────────────▼─────────────────────────────────┐
+│  Domain 层（领域模型 + 接口，纯 C#，无 UI / 无 WinRT）         │
+│  HeadsetDevice / BatteryInfo / NoiseCancellingMode           │
+│  IHeadsetConnection / IBatterySource / INoiseControlSource   │
+└───────────────────────────▲─────────────────────────────────┘
+                            │ 实现接口（依赖倒置）
+┌───────────────────────────┴─────────────────────────────────┐
+│  Infrastructure 层（蓝牙硬件访问 + 协议适配）                 │
+│  ┌─────────────┐  ┌─────────────────────────────────────┐  │
+│  │ WinRT 适配器  │  │  Protocol 适配器（可插拔）           │  │
+│  │ DeviceWatcher│  │  StandardProtocol / BESProtocol     │  │
+│  │ GattClient  │  │  YuandaoProtocol（逆向后填充）        │  │
+│  └─────────────┘  └─────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘</div>
+
+      <h3>3.3 依赖方向</h3>
+      <ul>
+        <li><b>允许</b>：上 → 下（Presentation→Application→Domain）；Infrastructure→Domain；</li>
+        <li><b>禁止</b>：Domain 引用上层或 WinRT；Application 不引用 WPF / WinRT 具体类型；</li>
+        <li>跨层对象一律使用 DTO / 领域模型，<b>禁止把 WinRT 类型</b>（<code>BluetoothLEDevice</code>、<code>GattCharacteristic</code>）传出 Infrastructure。</li>
+      </ul>
+
+      <h3>3.4 核心数据流</h3>
+      <p><b>电量数据流：</b></p>
+      <div class="flow">GATT Notify 事件
+  → Infrastructure 蓝牙适配器（解析原始帧）
+  → Protocol.YuandaoProtocol（解析出 BatteryInfo { L, R, Case }）
+  → Domain 领域模型
+  → Application.BatteryMonitorService（缓存 + 变更事件）
+  → Presentation ViewModel（PropertyChanged → 绑定刷新）</div>
+      <p><b>降噪切换数据流：</b></p>
+      <div class="flow">ViewModel 选择模式
+  → Application.NoiseCancellingService.SwitchAsync(mode)
+  → Protocol.YuandaoProtocol.BuildAncCommand(mode) → 字节帧
+  → Infrastructure GattClient.WriteAsync(私有特征, 帧)
+  → 耳机返回 → Protocol 解析确认 → ViewModel 更新 UI</div>
+
+      <h3>3.5 线程模型</h3>
+      <ul>
+        <li><b>UI 线程</b>：仅 WPF 绑定与事件转发，变更通过 Dispatcher 调度；</li>
+        <li><b>蓝牙 IO</b>：WinRT 异步 → <code>async/await</code>，不阻塞 UI；</li>
+        <li><b>Notify 回调</b>：可能不在 UI 线程，由 Application 层聚合发布，ViewModel 封送；</li>
+        <li><b>规则</b>：全链路 <code>await</code>，禁止 <code>async void</code>（事件处理器除外且必须 try/catch）；禁止 <code>.Result / .Wait()</code>。</li>
+      </ul>
+
+      <h2 id="s4"><span class="no">04</span>详细设计</h2>
+      <h3>4.1 模块划分</h3>
+      <div class="tablewrap"><table>
+        <tr><th>模块</th><th>职责</th><th>关键类型（草案）</th></tr>
+        <tr><td>YuandaoTws.App</td><td>入口、窗口、ViewModel、托盘、DI 组装</td><td>App.xaml、MainWindow、DeviceListViewModel、HeadsetControlViewModel</td></tr>
+        <tr><td>YuandaoTws.Application</td><td>用例编排、会话、重连、缓存</td><td>HeadsetConnectionService、BatteryMonitorService、NoiseCancellingService</td></tr>
+        <tr><td>YuandaoTws.Domain</td><td>领域模型与接口</td><td>HeadsetDevice、BatteryInfo、NoiseCancellingMode、IDeviceProtocol、IBatterySource、INoiseControlSource</td></tr>
+        <tr><td>YuandaoTws.Infrastructure</td><td>WinRT 封装 + GATT 客户端</td><td>BluetoothDeviceWatcher、GattClient</td></tr>
+        <tr><td>…Infrastructure.Protocols</td><td>协议适配器</td><td>StandardProtocol、BESProtocolBase、YuandaoProtocol</td></tr>
+        <tr><td>tests/…Domain.Tests</td><td>领域 / 协议单测</td><td>BatteryInfoParserTests、AncCommandBuilderTests</td></tr>
+      </table></div>
+
+      <h3>4.2 核心接口设计（Domain 层）</h3>
+<pre><code>// 设备协议：一个品牌一套实现，可插拔
+public interface IDeviceProtocol
+{
+    Guid ServiceUuid { get; }                       // 私有控制服务 UUID
+    BatteryInfo? TryParseBattery(byte[] frame);     // 解析电量帧（L/R/盒）
+    byte[] BuildAncCommand(NoiseCancellingMode mode);  // 构造降噪切换命令
+    NoiseCancellingMode? TryParseAncState(byte[] frame); // 解析当前降噪状态
+    bool IsAncStateNotification(Guid characteristicUuid);
+    bool Matches(HeadsetDevice device);             // 匹配判定
+}
+
+// 电量来源抽象（标准通道与私有通道都实现，支持优先级叠加）
+public interface IBatterySource
+{
+    Task&lt;BatteryInfo?&gt; ReadOnceAsync(CancellationToken ct);
+    IObservable&lt;BatteryInfo&gt; BatteryChanged { get; }   // Notify 订阅流
+}
+
+// 降噪控制抽象
+public interface INoiseControlSource
+{
+    Task&lt;NoiseCancellingMode&gt; GetModeAsync(CancellationToken ct);
+    Task SetModeAsync(NoiseCancellingMode mode, CancellationToken ct);
+    IObservable&lt;NoiseCancellingMode&gt; ModeChanged { get; }
+}</code></pre>
+
+      <h3>4.3 电量读取策略</h3>
+      <p><code>BatteryMonitorService</code> 聚合两条通道：</p>
+      <ol>
+        <li>连接后枚举 GATT 服务表（<code>BluetoothCacheMode.Uncached</code> 防陈旧）；</li>
+        <li>发现私有服务 UUID → 注册私有电量特征，走 <code>YuandaoProtocol</code>；</li>
+        <li>同时注册标准 <code>0x2A19</code> 兜底；</li>
+        <li>收到 Notify 帧按「私有优先」刷新 UI；</li>
+        <li>订阅失败退化为定时读取（间隔 ≥ 30s）。</li>
+      </ol>
+
+      <h3>4.4 降噪协议适配器</h3>
+      <p><code>YuandaoProtocol : BESProtocolBase, IDeviceProtocol</code>。UUID 常量与字节映射在逆向后填入；逆向完成前抛 <code>ProtocolNotResolvedException</code>。命令流程：先使能通知 → 写命令 → 等待确认帧（带超时）；写后回读当前模式确认，失败则提示，避免 UI 假成功。</p>
+
+      <h3>4.5 状态机与重连</h3>
+      <div class="flow">Disconnected ──连接──▶ Connecting ──成功──▶ Connected
+     ▲                      │失败            │
+     └──── 重连(退避) ───────┴──────── Notify 断开 ──▶ Reconnecting</div>
+      <p>断开自动重连（指数退避 1s→2s→4s，上限 30s）；重连后恢复电量订阅并回读降噪模式同步 UI；状态变化以事件发布。</p>
+
+      <h3>4.6 配置与持久化</h3>
+      <ul>
+        <li><code>appsettings.json</code>：日志级别、重连参数、协议开关；</li>
+        <li>用户配置：<code>%LocalAppData%\YuandaoTws\config.json</code>（记住上次设备、默认模式）；</li>
+        <li>无数据库。</li>
+      </ul>
+
+      <h2 id="s5"><span class="no">05</span>代码规范</h2>
+      <h3>5.1 通用规范</h3>
+      <ul>
+        <li>代码、注释、提交信息统一中文；标识符英文；</li>
+        <li>文件 ≤ 400 行，方法 ≤ 40 行（超限拆分）；</li>
+        <li>禁止 <code>#region</code> 大块包裹、禁止魔法数字；</li>
+        <li>提交格式：<code>&lt;type&gt;: &lt;subject&gt;</code>，type ∈ <code>feat/fix/refactor/docs/test/chore</code>。</li>
+      </ul>
+
+      <h3>5.2 C# 命名规范</h3>
+      <div class="tablewrap"><table>
+        <tr><th>类型</th><th>规则</th><th>示例</th></tr>
+        <tr><td>命名空间</td><td>PascalCase，按项目层级</td><td>YuandaoTws.Application.Services</td></tr>
+        <tr><td>类 / 接口</td><td>PascalCase；接口前缀 I</td><td>BatteryMonitorService、IDeviceProtocol</td></tr>
+        <tr><td>方法</td><td>PascalCase（动词短语）</td><td>GetBatteryAsync、SwitchModeAsync</td></tr>
+        <tr><td>属性</td><td>PascalCase</td><td>LeftEarPercent</td></tr>
+        <tr><td>常量</td><td>PascalCase</td><td>BatteryServiceUuid</td></tr>
+        <tr><td>私有字段</td><td>_camelCase</td><td>_gattClient</td></tr>
+        <tr><td>局部变量 / 参数</td><td>camelCase</td><td>deviceInfo</td></tr>
+        <tr><td>异步方法</td><td>后缀 Async</td><td>ReadOnceAsync</td></tr>
+        <tr><td>事件</td><td>PascalCase，ValueChanged 式</td><td>BatteryChanged</td></tr>
+      </table></div>
+
+      <h3>5.3 分层职责边界（红线）</h3>
+      <div class="tablewrap"><table>
+        <tr><th>层</th><th>允许</th><th>禁止</th></tr>
+        <tr><td>Presentation</td><td>绑定、ViewModel、命令触发、UI 调度</td><td>直接调用 WinRT；解析蓝牙帧</td></tr>
+        <tr><td>Application</td><td>用例编排、会话 / 缓存 / 重连</td><td>引用 WPF / WinRT 类型；写解析逻辑</td></tr>
+        <tr><td>Domain</td><td>领域模型、枚举、接口、纯算法</td><td>引用任何 UI / WinRT / 基础设施类型</td></tr>
+        <tr><td>Infrastructure</td><td>WinRT 封装、字节 IO、协议解析</td><td>反向依赖上层；包含业务用例</td></tr>
+      </table></div>
+      <p class="footnote">判定法：任意层文件的 <code>using</code> 不得出现其下方各层命名空间；<code>using Windows.*</code> 只允许出现在 Infrastructure。</p>
+
+      <h3>5.4 异步规范</h3>
+      <ul>
+        <li><code>async/await</code> 全链路，禁止 <code>.Result / .Wait()</code>；</li>
+        <li>库代码 <code>ConfigureAwait(false)</code>；事件处理器 <code>async void</code> 必须 try/catch；</li>
+        <li>可取消操作一律接受 <code>CancellationToken</code>；</li>
+        <li>GATT 读写设超时（<code>CancelAfter</code>），防止永久挂起。</li>
+      </ul>
+
+      <h3>5.5 错误处理与日志</h3>
+      <ul>
+        <li>自定义异常体系：<code>DomainException</code>、<code>BluetoothConnectionException</code>、<code>ProtocolException</code>、<code>ProtocolNotResolvedException</code>；</li>
+        <li>分层捕获：Infrastructure 抛领域化异常，Application 记录日志，Presentation 转 UI 提示；</li>
+        <li><b>禁止空 catch 吞异常</b>；异常必须含上下文（设备、UUID、操作、帧 hex）；</li>
+        <li>日志级别：Debug（帧级）/ Info（状态）/ Warn（重连、降级）/ Error（异常）；</li>
+        <li>电量帧解析失败记录完整 hex 帧，便于逆向校准。</li>
+      </ul>
+
+      <h3>5.6 单元测试规范</h3>
+      <ul>
+        <li>xUnit + NSubstitute（Mock）+ FluentAssertions；</li>
+        <li>协议解析逻辑 100% 覆盖，用真机抓包帧做测试数据；</li>
+        <li>Domain 测试不依赖硬件；Infrastructure 用接口隔离测试字节流处理；</li>
+        <li>覆盖率目标：Domain ≥ 80%，Application ≥ 60%。</li>
+      </ul>
+
+      <h3>5.7 代码评审清单</h3>
+      <ul class="check">
+        <li>依赖方向是否符合分层红线？</li>
+        <li>WinRT 类型是否泄漏出 Infrastructure？</li>
+        <li>是否存在 <code>async void</code> 未捕获、<code>.Result</code>、空 catch？</li>
+        <li>协议解析是否覆盖异常帧（长度不足、超界值）？</li>
+        <li>是否补充了对应单元测试用例？</li>
+      </ul>
+
+      <h2 id="s6"><span class="no">06</span>工程结构与构建</h2>
+      <h3>6.1 目录结构</h3>
+      <div class="arch">E:\Project\Bluetooth\
+├── src\
+│   ├── YuandaoTws.App\                    # WPF 入口
+│   │   ├── App.xaml / App.xaml.cs         # DI 组装、启动
+│   │   ├── Views\                         # MainWindow.xaml、托盘
+│   │   └── ViewModels\                    # DeviceList/HeadsetControl VM
+│   ├── YuandaoTws.Application\
+│   │   └── Services\                      # Connection/Battery/Anc Service
+│   ├── YuandaoTws.Domain\
+│   │   ├── Models\                        # HeadsetDevice、BatteryInfo
+│   │   ├── Enums\                         # NoiseCancellingMode
+│   │   └── Abstractions\                  # IDeviceProtocol 等接口
+│   └── YuandaoTws.Infrastructure\
+│       ├── Bluetooth\                     # Watcher、GattClient、WinRT 适配
+│       └── Protocols\                     # Standard/BES/Yuandao 适配器
+├── tests\
+│   ├── YuandaoTws.Domain.Tests\
+│   └── YuandaoTws.Infrastructure.Tests\
+├── tools\                                 # 协议逆向脚本（bleak 探测）
+├── docs\                                  # 本文档与逆向记录
+└── YuandaoTws.sln</div>
+
+      <h3>6.2 关键工程配置</h3>
+      <ul>
+        <li>TFM 统一 <code>net8.0-windows10.0.19041.0</code>（各项目一致，共享 WinRT 投影）；</li>
+        <li><code>&lt;Nullable&gt;enable&lt;/Nullable&gt;</code>、<code>&lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt;</code>、<code>&lt;LangVersion&gt;latest&lt;/LangVersion&gt;</code>；</li>
+        <li>开启 <code>TreatWarningsAsErrors</code>（CI 用）；</li>
+        <li><code>.editorconfig</code>：缩进 4 空格，<code>var</code> 当类型明显时使用。</li>
+      </ul>
+
+      <h3>6.3 发布</h3>
+      <p><code>dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true</code> 产出单文件 EXE；嵌入 256×256 ICO；语义化版本；发布前可选签名。</p>
+
+      <h2 id="s7"><span class="no">07</span>协议逆向方案（关键前置任务）</h2>
+      <div class="callout warn">
+        <span class="ct">⚠ 前置门禁</span> — 降噪切换与双耳电量的私有协议<b>必须先逆向</b>。本阶段交付「协议探测工具 + 协议文档」，通过后才能进入功能开发。预计 3–5 个工作日。
+      </div>
+
+      <h3>7.1 目标</h3>
+      <ol>
+        <li>枚举耳机完整 GATT 服务 / 特征表；</li>
+        <li>定位：双耳电量特征、降噪控制写特征、降噪状态通知特征；</li>
+        <li>得出命令字节结构与电量帧格式，形成 <code>docs/protocol/yuandao-origin.md</code>。</li>
+      </ol>
+
+      <h3>7.2 工具链</h3>
+      <div class="tablewrap"><table>
+        <tr><th>工具</th><th>用途</th></tr>
+        <tr><td>Android（开发者模式）</td><td>开启「蓝牙 HCI 抓包日志」，配合原道 APP 抓包</td></tr>
+        <tr><td>adb</td><td>导出 btsnoop_hci.log</td></tr>
+        <tr><td>Wireshark</td><td>解析 HCI/ATT/GATT</td></tr>
+        <tr><td>nRF Connect（Android）</td><td>免 APP 直连耳机，浏览 / 读写特征</td></tr>
+        <tr><td>JADX</td><td>反编译原道 APK，提取 UUID 与命令构造代码</td></tr>
+        <tr><td>本项目 tools/（Python bleak）</td><td>在 Windows 上重放命令、批量验证</td></tr>
+      </table></div>
+
+      <h3>7.3 操作步骤</h3>
+      <p><b>A. 抓包（Android HCI Snoop）</b></p>
+      <ol>
+        <li>开发者选项开启「蓝牙 HCI snoop 日志」；</li>
+        <li>原道 APP 连接耳机，依次执行：查看电量 → 降噪 → 通透 → 关闭；</li>
+        <li><code>adb pull /sdcard/btsnoop_hci.log</code>；</li>
+        <li>Wireshark 过滤器：发现 <code>btatt.opcode == 0x08 || 0x10</code>，写入 <code>0x12 || 0x52</code>，通知 <code>0x1b || 0x1d</code>。</li>
+      </ol>
+      <p><b>B. 反编译 APK（JADX）</b></p>
+      <ul>
+        <li>搜索 <code>writeCharacteristic</code>、<code>setCharacteristicNotification</code>；</li>
+        <li>搜索 128 位 UUID 字符串；</li>
+        <li>观察命令构造（是否 base64、是否带签名——<b>判断是否加密的关键</b>）。</li>
+      </ul>
+      <p><b>C. 实测核对（nRF Connect）</b>：直连耳机，对照记录逐一浏览服务表；手动写入候选命令，观察降噪是否变化。</p>
+      <p><b>D. 重放验证</b>：Windows 端 Python bleak 脚本重放降噪切换与电量读取，确认可稳定复现；帧样例作为单测数据。</p>
+
+      <h3>7.4 阶段交付物</h3>
+      <ul>
+        <li><code>docs/protocol/yuandao-origin.md</code>：UUID 表、命令表、电量帧格式；</li>
+        <li><code>tools/probe.py</code>：Windows 端探测 / 重放脚本；</li>
+        <li>测试用例帧数据（L/R 电量、三态降噪各一帧）。</li>
+      </ul>
+
+      <h3>7.5 决策点</h3>
+      <div class="tablewrap"><table>
+        <tr><th>探测结果</th><th>后续决策</th></tr>
+        <tr><td>命令明文可重放</td><td><span class="chip low">✅ 正常开发</span>，适配器按协议实现</td></tr>
+        <tr><td>命令带简单校验（CRC/校验和）</td><td><span class="chip mid">✅ 补校验算法</span></td></tr>
+        <tr><td>命令带加密 / 签名 / 会话密钥</td><td><span class="chip high">⚠ 评估成本</span>，可能仅实现电量或暂停</td></tr>
+      </table></div>
+
+      <h2 id="s8"><span class="no">08</span>开发计划</h2>
+      <div class="tablewrap"><table>
+        <tr><th>里程碑</th><th>内容</th><th>周期</th></tr>
+        <tr><td>M0 协议逆向</td><td>逆向全流程，产出协议文档</td><td>3–5 天</td></tr>
+        <tr><td>M1 工程骨架 + 连接</td><td>分层工程、DI、扫描 / 连接 / 断开、显示设备名</td><td>2–3 天</td></tr>
+        <tr><td>M2 电量显示</td><td>标准通道先行，私有通道按 M0 接入，Notify 实时刷新</td><td>2–3 天</td></tr>
+        <tr><td>M3 降噪切换</td><td>私有命令接入、模式回读、失败回滚</td><td>2–3 天</td></tr>
+        <tr><td>M4 打磨发布</td><td>托盘、重连、单文件 EXE、图标</td><td>2 天</td></tr>
+      </table></div>
+      <p>依赖：M0 → M2/M3；M1 可与 M0 并行。总工期约 2–3 周（单人）。</p>
+      <p><b>首周任务：</b></p>
+      <ul class="check">
+        <li>建立 5 层工程骨架与 .editorconfig、CI 构建脚本</li>
+        <li>Domain 层接口与模型 + 单元测试</li>
+        <li>蓝牙扫描与连接（DeviceWatcher + BluetoothLEDevice）</li>
+        <li>标准 0x2A19 电量读取与 Notify 订阅（兜底通道）</li>
+        <li>并行启动 M0 协议逆向（抓包 + 反编译）</li>
+        <li>实现 tools/probe.py 探测脚本</li>
+      </ul>
+
+      <h2 id="s9"><span class="no">09</span>风险与应对</h2>
+      <div class="tablewrap"><table>
+        <tr><th>#</th><th>风险</th><th>影响</th><th>应对</th></tr>
+        <tr><td>1</td><td>私有协议未公开，逆向周期不可控</td><td><span class="chip high">高</span></td><td>M0 前置，探测不通过不排期 M2/M3</td></tr>
+        <tr><td>2</td><td>命令可能加密</td><td><span class="chip high">高</span></td><td>逆向阶段判定；加密则降级范围或协商</td></tr>
+        <tr><td>3</td><td>双耳电量仅 Notify 不 Read</td><td><span class="chip mid">中</span></td><td>统一订阅通道；兜底显示</td></tr>
+        <tr><td>4</td><td>非打包应用 WinRT 受限</td><td><span class="chip low">低</span></td><td>兜底 MSIX 打包发布</td></tr>
+        <tr><td>5</td><td>固件升级协议漂移</td><td><span class="chip low">低</span></td><td>记录固件版本，适配器版本化</td></tr>
+        <tr><td>6</td><td>扫描不到 BLE 设备</td><td><span class="chip mid">中</span></td><td>文档注明首次使用先在 Windows 蓝牙设置配对</td></tr>
+      </table></div>
+
+      <h2 id="s10"><span class="no">附录</span>参考资料</h2>
+      <h3>产品与芯片</h3>
+      <ul>
+        <li>IT之家：原道首款 TWS 耳机 OriG in「原点」首销 — <a href="https://m.ithome.com/html/886610.htm">m.ithome.com</a></li>
+        <li>我爱音频网：LHDC-V5 加持！原道 OriG in 原点 — <a href="https://www.52audio.com/archives/255890.html">52audio.com</a></li>
+      </ul>
+      <h3>Windows 蓝牙开发（一手来源）</h3>
+      <ul>
+        <li>微软官方：《Bluetooth GATT 客户端》— <a href="https://learn.microsoft.com/windows/apps/develop/devices-sensors/gatt-client">learn.microsoft.com</a></li>
+        <li>微软官方：《Bluetooth 概览 + capability 声明》— <a href="https://learn.microsoft.com/windows/apps/develop/devices-sensors/bluetooth">learn.microsoft.com</a></li>
+        <li>.NET TFM 与 Windows SDK 投影 — <a href="https://stackoverflow.com/questions/79666065">stackoverflow.com</a></li>
+      </ul>
+      <h3>同类逆向案例</h3>
+      <ul>
+        <li>SonyHeadphonesClient（索尼耳机跨平台客户端）— <a href="https://developer.baidu.com/article/detail.html?id=5316229">developer.baidu.com</a></li>
+        <li>marshall-protocol（Marshall 耳机 BLE 协议逆向）— <a href="https://github.com/c0ffee-audio/marshall-protocol">github.com</a></li>
+        <li>华为 FreeBuds 逆向（含加密握手反面案例）— <a href="https://my.oschina.net/emacs_7999999/blog/19442486">oschina.net</a></li>
+      </ul>
+      <h3>BLE 抓包与逆向方法论</h3>
+      <ul>
+        <li>Wireshark 蓝牙分析指南 — <a href="https://infishark.com/blogs/learn/using-wireshark-for-bluetooth-analysis">infishark.com</a></li>
+        <li>蓝牙 HCI 数据包抓取与解析实战 — <a href="https://blog.csdn.net/weixin_28419039/article/details/159571396">csdn.net</a></li>
+      </ul>
+
+      <hr>
+      <p class="footnote">本页面为本地开发文档的排版阅读版；权威交付物为 <code>E:\Project\Bluetooth\docs\开发文档.md</code>。</p>
+
+    </div>
+  </main>
+</div>

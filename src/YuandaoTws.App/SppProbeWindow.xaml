@@ -1,0 +1,161 @@
+<Window x:Class="YuandaoTws.App.SppProbeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="SPP/RFCOMM 串口探测"
+        Height="720" Width="960"
+        MinHeight="580" MinWidth="840"
+        FontFamily="Microsoft YaHei UI"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="170" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 顶栏 -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="SPP/RFCOMM 串口探测 · 经典蓝牙控制通道"
+                       FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" />
+            <TextBlock DockPanel.Dock="Right" Text="{Binding StatusText}"
+                       Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"
+                       FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
+        </DockPanel>
+
+        <!-- 设备与服务操作 -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="设备" VerticalAlignment="Center" FontSize="12" />
+                <ComboBox ItemsSource="{Binding Devices}" DisplayMemberPath="Name"
+                          SelectedItem="{Binding SelectedDevice}" Width="300" Margin="8,0,0,0"
+                          VerticalContentAlignment="Center" />
+                <Button Content="刷新已配对设备" Command="{Binding RefreshDevicesCommand}" Padding="12,5" Margin="8,0,0,0" />
+                <Button Content="枚举服务" Command="{Binding EnumerateServicesCommand}" Padding="12,5" Margin="8,0,0,0" />
+                <Button Content="复制全部服务" Command="{Binding CopyServicesCommand}" Padding="12,5" Margin="8,0,0,0" />
+                <TextBlock Text="SPP 走经典蓝牙，无需 BLE 连接，但设备必须已配对。"
+                           Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"
+                           Margin="10,0,0,0" FontSize="11" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- 服务表 -->
+        <Border Grid.Row="2"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                Background="{StaticResource PanelBrush}">
+            <DataGrid ItemsSource="{Binding Services}"
+                      SelectedItem="{Binding SelectedService}"
+                      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                      HeadersVisibility="Column" RowHeaderWidth="0"
+                      BorderThickness="0" Background="Transparent"
+                      GridLinesVisibility="Horizontal"
+                      FontFamily="Consolas" FontSize="12"
+                      Margin="4">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="服务" Binding="{Binding ServiceName}" Width="*" />
+                    <DataGridTextColumn Header="服务 UUID" Binding="{Binding ServiceId}" Width="240" />
+                    <DataGridTextColumn Header="通道" Binding="{Binding ChannelName}" Width="80" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- 连接与发送 -->
+        <StackPanel Grid.Row="3" Margin="0,12,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="打开 SPP 流" Command="{Binding OpenStreamCommand}" Padding="16,6" />
+                <Button Content="关闭流" Command="{Binding CloseStreamCommand}" Padding="16,6" Margin="10,0,0,0" />
+                <TextBlock Text="● 已连接" Foreground="#0B6BCB" VerticalAlignment="Center" Margin="14,0,0,0" FontSize="12">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="● 未连接" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="14,0,0,0" FontSize="12">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <TextBlock Text="发送 hex" VerticalAlignment="Center" FontSize="12" />
+                <TextBox Text="{Binding WriteHex}" Width="160" FontFamily="Consolas" VerticalContentAlignment="Center"
+                         Margin="8,0,0,0" Padding="4,2" />
+                <Button Content="发送" Command="{Binding SendCommand}" Padding="14,5" Margin="8,0,0,0" />
+                <TextBlock Text="快捷：" VerticalAlignment="Center" Margin="12,0,0,0"
+                           Foreground="{StaticResource MutedBrush}" FontSize="11" />
+                <Button Content="01" Command="{Binding QuickSendCommand}" CommandParameter="01" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="02" Command="{Binding QuickSendCommand}" CommandParameter="02" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="03" Command="{Binding QuickSendCommand}" CommandParameter="03" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="04" Command="{Binding QuickSendCommand}" CommandParameter="04" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="05" Command="{Binding QuickSendCommand}" CommandParameter="05" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="00" Command="{Binding QuickSendCommand}" CommandParameter="00" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="FF" Command="{Binding QuickSendCommand}" CommandParameter="FF" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="FE 01" Command="{Binding QuickSendCommand}" CommandParameter="FE 01" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="AA 01" Command="{Binding QuickSendCommand}" CommandParameter="AA 01" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="00×16" Command="{Binding QuickSendCommand}" CommandParameter="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="FF×16" Command="{Binding QuickSendCommand}" CommandParameter="FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF" Padding="10,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- 流日志标题 -->
+        <TextBlock Grid.Row="4" Text="流日志 — 发送与接收都带时间戳，配合下方会话记录"
+                   FontWeight="SemiBold" Margin="2,12,0,6" FontSize="12.5" />
+
+        <!-- 流日志 -->
+        <Border Grid.Row="5"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                Background="{StaticResource PanelBrush}">
+            <ListBox ItemsSource="{Binding StreamLog}"
+                     BorderThickness="0" Background="Transparent"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     FontFamily="Consolas" FontSize="12">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="2,3">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Time}" Foreground="{StaticResource MutedBrush}" />
+                                <TextBlock Text="{Binding Direction}" Margin="12,0,0,0" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Hex}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- 会话记录 -->
+        <StackPanel Grid.Row="6" Margin="0,12,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="开始/停止记录" Command="{Binding ToggleSessionLogCommand}" Padding="12,5" />
+                <TextBox Text="{Binding MarkerText}" Width="160" VerticalContentAlignment="Center"
+                         Margin="8,0,0,0" Padding="4,2" />
+                <Button Content="标记" Command="{Binding AddMarkerCommand}" Padding="14,5" Margin="8,0,0,0" />
+                <TextBlock Text="{Binding SessionLogState}" Foreground="{StaticResource MutedBrush}"
+                           VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11" />
+                <TextBlock Text="流程：开始记录 → 发命令 → 看回包 → 标记「切到通透」→ … → 停止记录，文件在 probe 目录。"
+                           Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="14,0,0,0"
+                           FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

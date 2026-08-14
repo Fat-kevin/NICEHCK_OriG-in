@@ -1,0 +1,179 @@
+<Window x:Class="YuandaoTws.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="原道「原点」耳机控制台"
+        Height="560" Width="760"
+        MinHeight="480" MinWidth="640"
+        FontFamily="Microsoft YaHei UI"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 顶栏 -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="原道 OriG in「原点」· 蓝牙控制台"
+                       FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" />
+            <TextBlock DockPanel.Dock="Right" Text="{Binding StatusText}"
+                       Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="12.5" />
+        </DockPanel>
+
+        <!-- 主体 -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="3*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左：设备列表 -->
+            <Border Grid.Column="0" Margin="0,0,6,0"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Background="{StaticResource PanelBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="附近设备" FontWeight="SemiBold" Margin="12,10" />
+                    <ListBox Grid.Row="1" Margin="6,0"
+                             ItemsSource="{Binding Devices}"
+                             SelectedItem="{Binding SelectedDevice}"
+                             BorderThickness="0" Background="Transparent"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="2,4">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{StaticResource MutedBrush}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Grid.Row="2" Command="{Binding ToggleScanCommand}" Margin="12,8" Padding="0,6">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Content" Value="扫描设备" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                        <Setter Property="Content" Value="停止扫描" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- 右：信息卡 -->
+            <Border Grid.Column="1" Margin="6,0,0,0"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Background="{StaticResource PanelBrush}" Padding="16">
+                <StackPanel>
+                    <!-- 设备名 -->
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="设备名称：" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="{Binding DeviceName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <!-- 电量 -->
+                    <TextBlock Text="电池" FontWeight="SemiBold" Margin="0,18,0,8" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                            <TextBlock Text="左耳" Foreground="{StaticResource MutedBrush}" FontSize="12" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding LeftBattery}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" FontFamily="Consolas" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                            <TextBlock Text="右耳" Foreground="{StaticResource MutedBrush}" FontSize="12" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding RightBattery}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" FontFamily="Consolas" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                            <TextBlock Text="充电盒" Foreground="{StaticResource MutedBrush}" FontSize="12" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding CaseBattery}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" FontFamily="Consolas" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- 完整控制 -->
+                    <TextBlock Text="设备与音效" FontWeight="SemiBold" Margin="0,18,0,8" />
+                    <TextBlock Text="{Binding FirmwareVersion, StringFormat=固件：{0}}" Foreground="{StaticResource MutedBrush}" />
+                    <TextBlock Text="{Binding EqualizerText, StringFormat=当前 EQ：{0}}" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,6" />
+                    <WrapPanel IsEnabled="{Binding AncControlsEnabled}">
+                        <Button Content="悔恨之泪" Command="{Binding SetEqualizerCommand}" CommandParameter="Blue" Margin="0,0,6,6" />
+                        <Button Content="均衡中正" Command="{Binding SetEqualizerCommand}" CommandParameter="Balanced" Margin="0,0,6,6" />
+                        <Button Content="欧美澎湃" Command="{Binding SetEqualizerCommand}" CommandParameter="Bass" Margin="0,0,6,6" />
+                        <Button Content="真律还原" Command="{Binding SetEqualizerCommand}" CommandParameter="Pure" Margin="0,0,6,6" />
+                        <Button Content="游戏优化" Command="{Binding SetEqualizerCommand}" CommandParameter="Game" Margin="0,0,6,6" />
+                        <Button Content="细腻佳音" Command="{Binding SetEqualizerCommand}" CommandParameter="Fine" Margin="0,0,6,6" />
+                        <Button Content="温婉人声" Command="{Binding SetEqualizerCommand}" CommandParameter="Vocal" Margin="0,0,6,6" />
+                    </WrapPanel>
+
+                    <TextBlock Text="降噪模式" FontWeight="SemiBold" Margin="0,12,0,8" />
+                    <WrapPanel IsEnabled="{Binding AncControlsEnabled}">
+                        <RadioButton Content="关闭" GroupName="AncMode" IsChecked="{Binding IsAncOff}" Margin="0,0,12,6" />
+                        <RadioButton Content="通透" GroupName="AncMode" IsChecked="{Binding IsTransparency}" Margin="0,0,12,6" />
+                        <RadioButton Content="普通" GroupName="AncMode" IsChecked="{Binding IsAncNormal}" Margin="0,0,12,6" />
+                        <RadioButton Content="深度" GroupName="AncMode" IsChecked="{Binding IsAncDeep}" Margin="0,0,12,6" />
+                        <RadioButton Content="试验" GroupName="AncMode" IsChecked="{Binding IsAncExperimental}" Margin="0,0,12,6" />
+                        <RadioButton Content="风噪抑制" GroupName="AncMode" IsChecked="{Binding IsAncWindSuppression}" Margin="0,0,12,6" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding AncStatusText}" FontSize="12"
+                               Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                    <TextBlock Text="功能开关" FontWeight="SemiBold" Margin="0,12,0,8" />
+                    <WrapPanel IsEnabled="{Binding AncControlsEnabled}">
+                        <Button Content="游戏模式" Command="{Binding SetToggleCommand}" CommandParameter="game" Margin="0,0,6,6" />
+                        <Button Content="低延迟" Command="{Binding SetToggleCommand}" CommandParameter="latency" Margin="0,0,6,6" />
+                        <Button Content="双设备" Command="{Binding SetToggleCommand}" CommandParameter="dual" Margin="0,0,6,6" />
+                        <Button Content="入耳检测" Command="{Binding SetToggleCommand}" CommandParameter="inear" Margin="0,0,6,6" />
+                        <Button Content="抗风噪" Command="{Binding SetToggleCommand}" CommandParameter="wind" Margin="0,0,6,6" />
+                    </WrapPanel>
+
+                    <Expander Header="高级实验：编码切换" Margin="0,8,0,0" IsEnabled="{Binding AncControlsEnabled}">
+                        <StackPanel Margin="4,6,0,0">
+                            <TextBlock Text="设备不提供可靠的当前编码查询；切换可能断音或触发重连，请谨慎使用。"
+                                       Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" FontSize="11" />
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="AAC" Command="{Binding SetCodecCommand}" CommandParameter="Aac" Margin="0,0,6,0" />
+                                <Button Content="LHDC" Command="{Binding SetCodecCommand}" CommandParameter="Lhdc" Margin="0,0,6,0" />
+                                <Button Content="SBC（固件 4.8+）" Command="{Binding SetCodecCommand}" CommandParameter="Sbc" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- 操作按钮 -->
+                    <WrapPanel Orientation="Horizontal" Margin="0,22,0,0">
+                        <Button Content="连接" Command="{Binding ConnectCommand}" Padding="20,7" />
+                        <Button Content="配对" Command="{Binding PairDeviceCommand}"
+                                IsEnabled="{Binding CanConnect}" Padding="12,7" Margin="10,0,0,0" />
+                        <Button Content="断开" Command="{Binding DisconnectCommand}"
+                                IsEnabled="{Binding IsConnected}" Padding="20,7" Margin="10,0,0,0" />
+                        <Button Content="协议探测" Command="{Binding OpenProbeCommand}"
+                                IsEnabled="{Binding IsConnected}" Padding="12,7" Margin="10,0,0,0" />
+                        <Button Content="SPP 探测" Command="{Binding OpenSppProbeCommand}"
+                                Padding="12,7" Margin="10,0,0,0"
+                                ToolTip="经典蓝牙 RFCOMM/SPP 探测：枚举已配对设备的串口服务并打开字节流（无需 BLE 连接）" />
+                        <Button Content="协议自动校验" Command="{Binding OpenVerifyCommand}"
+                                Padding="12,7" Margin="10,0,0,0"
+                                ToolTip="一键自动校验控制通道：逐服务开流并发送 NiceHCK/原道格式命令，判定协议格式并导出报告" />
+                        <Button Content="全自动探测" Command="{Binding RunAutoProbeCommand}"
+                                IsEnabled="{Binding CanConnect}" Padding="12,7" Margin="10,0,0,0"
+                                ToolTip="一键自动试探耳机私有协议：自动连接、枚举、写候选命令、捕获响应并导出报告" />
+                        <Button Content="观察耳机" Command="{Binding ObserveCommand}"
+                                IsEnabled="{Binding CanConnect}" Padding="12,7" Margin="10,0,0,0"
+                                ToolTip="30 秒内记录耳机状态与通知变化，期间请戴上耳机手动切换降噪" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

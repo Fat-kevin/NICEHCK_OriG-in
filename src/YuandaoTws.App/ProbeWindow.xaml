@@ -1,0 +1,145 @@
+<Window x:Class="YuandaoTws.App.ProbeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="协议探测 · GATT 通道浏览器"
+        Height="740" Width="980"
+        MinHeight="600" MinWidth="860"
+        FontFamily="Microsoft YaHei UI"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="170" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 顶栏 -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="协议探测 · 耳机 GATT 通道浏览器"
+                       FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" />
+            <TextBlock DockPanel.Dock="Right" Text="{Binding StatusText}"
+                       Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"
+                       FontSize="12" TextWrapping="Wrap" MaxWidth="560" />
+        </DockPanel>
+
+        <!-- 特征表 -->
+        <Border Grid.Row="1"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                Background="{StaticResource PanelBrush}">
+            <DataGrid ItemsSource="{Binding Services}"
+                      SelectedItem="{Binding SelectedCharacteristic}"
+                      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                      HeadersVisibility="Column" RowHeaderWidth="0"
+                      BorderThickness="0" Background="Transparent"
+                      GridLinesVisibility="Horizontal"
+                      FontFamily="Consolas" FontSize="12"
+                      Margin="4">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="服务" Binding="{Binding ServiceName}" Width="230" />
+                    <DataGridTextColumn Header="特征" Binding="{Binding CharacteristicName}" Width="*" />
+                    <DataGridTextColumn Header="属性" Binding="{Binding PropertiesText}" Width="90" />
+                    <DataGridTextColumn Header="读值" Binding="{Binding ValueText}" Width="170" />
+                    <DataGridTextColumn Header="最近通知" Binding="{Binding LastNotification}" Width="170" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- 通知日志标题 -->
+        <TextBlock Grid.Row="2" Text="通知日志 — 在耳机 / 手机 APP 上操作（切换降噪、查看电量），推送数据的特征会实时出现在这里"
+                   FontWeight="SemiBold" Margin="2,12,0,6" FontSize="12.5" />
+
+        <!-- 通知日志 -->
+        <Border Grid.Row="3"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                Background="{StaticResource PanelBrush}">
+            <ListBox ItemsSource="{Binding NotificationLog}"
+                     BorderThickness="0" Background="Transparent"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     FontFamily="Consolas" FontSize="12">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="2,3">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Time}" Foreground="{StaticResource MutedBrush}" />
+                                <TextBlock Text="{Binding Uuid}" Margin="12,0,0,0" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Hex}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- 底部操作 -->
+        <StackPanel Grid.Row="4" Margin="0,14,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="开始探测" Command="{Binding EnumerateCommand}" Padding="18,7" FontFamily="Microsoft YaHei UI" />
+                <Button Content="读取全部可读特征" Command="{Binding ReadAllCommand}" Padding="18,7" Margin="10,0,0,0" FontFamily="Microsoft YaHei UI" />
+                <Button Content="监听通知" Command="{Binding ListenCommand}" Padding="18,7" Margin="10,0,0,0" FontFamily="Microsoft YaHei UI" />
+                <Button Content="导出报告" Command="{Binding ExportCommand}" Padding="18,7" Margin="10,0,0,0" FontFamily="Microsoft YaHei UI" />
+            </StackPanel>
+
+            <!-- 写值试探区 -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <TextBlock Text="向选中特征写值" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="12" />
+                <TextBox Text="{Binding WriteHex}" Width="150" FontFamily="Consolas" VerticalContentAlignment="Center"
+                         Margin="8,0,0,0" Padding="4,2" />
+                <Button Content="写入" Command="{Binding WriteCharacteristicCommand}"
+                        Padding="14,5" Margin="8,0,0,0" FontFamily="Microsoft YaHei UI" />
+                <TextBlock Text="先选中上方表格一行，再写（如 01 / 02 / 03…）。写完看下方通知日志与耳机反应。"
+                           Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="10,0,0,0"
+                           FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- 快捷读取 / 复制 -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="读取选中" Command="{Binding ReadSelectedCommand}" Padding="12,5" FontFamily="Microsoft YaHei UI" />
+                <Button Content="复制全部值" Command="{Binding CopyValuesCommand}" Padding="12,5" Margin="8,0,0,0" FontFamily="Microsoft YaHei UI" />
+                <Button Content="复制选中" Command="{Binding CopySelectedCommand}" Padding="12,5" Margin="8,0,0,0" FontFamily="Microsoft YaHei UI" />
+                <CheckBox Content="无响应写" IsChecked="{Binding WriteWithoutResponse}"
+                          VerticalAlignment="Center" Margin="14,0,0,0" FontFamily="Microsoft YaHei UI" FontSize="12" />
+                <TextBlock Text="「读取选中」用于对照测试：读 → 耳机上操作 → 再读，配合下方会话记录。"
+                           Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="12,0,0,0"
+                           FontSize="11" />
+            </StackPanel>
+
+            <!-- 快速写入预设 -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <TextBlock Text="快速写入（写入选中的特征）：" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="12" />
+                <Button Content="01" Command="{Binding QuickWriteCommand}" CommandParameter="01" Padding="12,4" Margin="8,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="02" Command="{Binding QuickWriteCommand}" CommandParameter="02" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="03" Command="{Binding QuickWriteCommand}" CommandParameter="03" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="04" Command="{Binding QuickWriteCommand}" CommandParameter="04" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="05" Command="{Binding QuickWriteCommand}" CommandParameter="05" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="00" Command="{Binding QuickWriteCommand}" CommandParameter="00" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="FF" Command="{Binding QuickWriteCommand}" CommandParameter="FF" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="01 00" Command="{Binding QuickWriteCommand}" CommandParameter="01 00" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="AA 01" Command="{Binding QuickWriteCommand}" CommandParameter="AA 01" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="FE 01" Command="{Binding QuickWriteCommand}" CommandParameter="FE 01" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="00×16" Command="{Binding QuickWriteCommand}" CommandParameter="00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+                <Button Content="FF×16" Command="{Binding QuickWriteCommand}" CommandParameter="FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF" Padding="12,4" Margin="6,0,0,0" FontFamily="Consolas" FontSize="12" />
+            </StackPanel>
+
+            <!-- 会话记录 -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="开始/停止记录" Command="{Binding ToggleSessionLogCommand}" Padding="12,5" FontFamily="Microsoft YaHei UI" />
+                <TextBox Text="{Binding MarkerText}" Width="160" FontFamily="Microsoft YaHei UI" VerticalContentAlignment="Center"
+                         Margin="8,0,0,0" Padding="4,2" />
+                <Button Content="标记" Command="{Binding AddMarkerCommand}" Padding="14,5" Margin="8,0,0,0" FontFamily="Microsoft YaHei UI" />
+                <TextBlock Text="{Binding SessionLogState}" Foreground="{StaticResource MutedBrush}"
+                           VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11" />
+                <TextBlock Text="流程：开始记录 → 读 fe2c123a → 标记「切到通透」→ 耳机上操作 → 再读 → … → 停止记录，文件在 probe 目录。"
+                           Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="14,0,0,0"
+                           FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding ReportPath}" Foreground="{StaticResource MutedBrush}"
+                       FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0" />
+        </StackPanel>
+    </Grid>
+</Window>
