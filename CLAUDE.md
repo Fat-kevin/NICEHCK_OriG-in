@@ -22,7 +22,7 @@ dotnet test tests/YuandaoTws.Domain.Tests
 dotnet run --project src/YuandaoTws.App
 ```
 
-Windows 下一键构建+启动：双击根目录 `启动耳机控制台.bat`（杀旧实例 → 构建 → 启动；旧实例运行中会锁 DLL 导致构建复制失败，见 `docs/交接文档.md` 坑 12）。
+Windows 下一键构建+启动：双击根目录 `启动耳机控制台.bat`（杀旧实例 → 构建 → 启动生产版 `YuandaoTws.Desktop`；旧实例运行中会锁 DLL 导致构建复制失败，见 `docs/交接文档.md` 坑 12）。
 
 运行需 Windows + 蓝牙适配器；首次使用请先在 Windows 蓝牙设置中与耳机配对。
 
