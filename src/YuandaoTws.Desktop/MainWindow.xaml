@@ -9,7 +9,7 @@
         xmlns:conv="clr-namespace:YuandaoTws.Desktop.Converters"
         xmlns:viewModels="clr-namespace:YuandaoTws.Desktop.ViewModels"
         mc:Ignorable="d"
-        Title="原点耳机控制" Width="1000" Height="680" MinWidth="880" MinHeight="600"
+        Title="原点耳机控制" Icon="Assets/app.ico" Width="1000" Height="680" MinWidth="880" MinHeight="600"
         WindowStartupLocation="CenterScreen" WindowStyle="None" AllowsTransparency="False"
         Background="{StaticResource BackgroundBrush}" FontFamily="Microsoft YaHei UI" FontSize="13"
         d:DataContext="{d:DesignInstance Type=viewModels:DashboardViewModel, IsDesignTimeCreatable=False}">
@@ -32,7 +32,7 @@
         <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
             <Grid>
-                <Grid MouseLeftButtonDown="DragWindow">
+                <Grid MouseLeftButtonDown="DragWindow" Background="Transparent">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
                         <Border Width="34" Height="34" CornerRadius="9" Background="{StaticResource AccentBrush}" VerticalAlignment="Center">
                             <TextBlock Text="原" FontSize="17" FontWeight="Bold" Foreground="White"
