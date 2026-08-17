@@ -23,6 +23,7 @@ public partial class App : System.Windows.Application
         collection.AddApplication();
         collection.AddInfrastructure();
         collection.AddSingleton<DashboardViewModel>();
+        collection.AddSingleton<Services.WindowBackdropService>();
         collection.AddSingleton<MainWindow>();
         collection.AddSingleton<Services.TrayIconService>();
         collection.AddSingleton<Services.TaskbarOverlayService>();
