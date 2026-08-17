@@ -83,7 +83,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <Separator Height="1" Background="{StaticResource DividerBrush}" Margin="0,20,0,20" />
+                            <Separator Height="1" Background="{StaticResource DividerBrush}" Margin="0,14,0,14" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -128,7 +128,7 @@
                     </Border>
 
                     <!-- 降噪模式卡片 -->
-                    <Border Style="{StaticResource Card}" Margin="0,18,0,0" IsEnabled="{Binding IsConnected}">
+                    <Border Style="{StaticResource Card}" Margin="0,14,0,0" IsEnabled="{Binding IsConnected}">
                         <StackPanel>
                             <TextBlock Text="降噪模式" Style="{StaticResource SectionTitle}" />
                             <TextBlock Text="{Binding AncDetailText}" Style="{StaticResource SectionCaption}" Margin="0,4,0,16" />
@@ -166,7 +166,7 @@
                     </Border>
 
                     <!-- 均衡器卡片 -->
-                    <Border Style="{StaticResource Card}" Margin="0,18,0,0" IsEnabled="{Binding IsConnected}">
+                    <Border Style="{StaticResource Card}" Margin="0,14,0,0" IsEnabled="{Binding IsConnected}">
                         <StackPanel>
                             <TextBlock Text="均衡器" Style="{StaticResource SectionTitle}" />
                             <TextBlock Text="{Binding EqualizerDetailText}" Style="{StaticResource SectionCaption}" Margin="0,4,0,16" />

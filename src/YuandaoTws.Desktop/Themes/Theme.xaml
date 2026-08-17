@@ -5,8 +5,8 @@
     <!-- ============================================================ -->
 
     <!-- 调色板（浅色） -->
-    <!-- 窗口背景带透明通道：不透明会完全挡住 DWM Mica 背板；90% 不透明让 Mica 隐约透出（见 WindowBackdropService） -->
-    <SolidColorBrush x:Key="BackgroundBrush" Color="#E6F3F4F6" />
+    <!-- 窗口背景兜底色：Windows 11 22H2+ 下 WindowBackdropService 运行时会改为透明以透出 Mica 背板；旧系统保持不透明 -->
+    <SolidColorBrush x:Key="BackgroundBrush" Color="#F3F4F6" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="SurfaceSubtleBrush" Color="#F6F7F9" />
     <SolidColorBrush x:Key="TrackBrush" Color="#E6E8EC" />
@@ -43,7 +43,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="14" />
-        <Setter Property="Padding" Value="24" />
+        <Setter Property="Padding" Value="20" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Effect">
             <Setter.Value>
