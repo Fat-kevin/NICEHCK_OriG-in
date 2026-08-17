@@ -10,6 +10,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
+    <!-- 单文件发布时把 WPF 原生库一并嵌入 exe（运行时自解压到临时目录），实现真正的单文件分发 -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <!-- WPF 的 DPI 感知依赖 app.manifest；WinForms 分析器 WFAC010 建议改用 ApplicationHighDpiMode，
          但该属性只作用于 WinForms 入口点（本应用为 WPF 入口），因此抑制这条警告。 -->
     <NoWarn>$(NoWarn);WFAC010</NoWarn>

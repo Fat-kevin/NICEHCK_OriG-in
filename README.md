@@ -51,7 +51,7 @@
 | ANC | 关闭、通透、普通降噪、深度降噪、试验、风噪抑制 |
 | EQ | 悔恨之泪、均衡中正、欧美澎湃、真律还原、游戏优化、细腻佳音、温婉人声 |
 | 快捷开关 | 游戏模式、低延迟、双设备连接、入耳检测、抗风噪 |
-| 桌面体验 | WPF + DWM Mica 中文 Fluent 界面、系统窗口圆角、托盘入口；任务栏覆盖图标仍为后续工作 |
+| 桌面体验 | WPF + DWM Mica 中文 Fluent 界面、系统窗口圆角、自绘标题栏、托盘 ANC 快捷切换、任务栏电池进度、单文件 EXE |
 | 工程工具 | GATT/SPP 探测、协议验证、会话记录（调试版保留） |
 
 ## 安装与运行
@@ -90,8 +90,11 @@ dotnet publish src/YuandaoTws.Desktop `
   -c Release `
   -r win-x64 `
   --self-contained true `
-  /p:PublishSingleFile=true
+  /p:PublishSingleFile=true `
+  /p:DebugType=None
 ```
+
+> `DebugType=None` 跳过 PDB 调试符号；WPF 原生库已通过 csproj 的 `IncludeNativeLibrariesForSelfExtract` 嵌入 exe，产出即单个绿色 EXE。
 
 首次使用前，请先打开 Windows 设置 → 蓝牙和设备，与耳机配对。非打包桌面应用对未配对设备的写入操作可能会被系统拒绝。
 
@@ -166,7 +169,6 @@ docs/
 
 - 目前主要面向原道 OriG in「原点」及同协议族设备
 - 当前生产版采用 WPF + DWM Mica；它不是 WinUI 3 的 `DesktopAcrylicController` 实现，系统透明效果和视觉表现会随 Windows 版本/设置降级
-- 任务栏覆盖图标服务尚未完成真实图标绘制
 - codec 切换属于实验能力，可能导致短暂断音或重新连接
 - 充电盒返回 0 时代表未知，不代表真实电量为 0%
 - 使用前必须完成 Windows 蓝牙配对
