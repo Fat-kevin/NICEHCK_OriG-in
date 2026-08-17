@@ -5,3 +5,4 @@
 *.suo
 probe/*.txt
 logs/
+.claude/settings.local.json
