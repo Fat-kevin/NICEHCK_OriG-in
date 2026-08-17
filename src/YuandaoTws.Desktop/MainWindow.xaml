@@ -1,29 +1,252 @@
 <Window x:Class="YuandaoTws.Desktop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="原点" Width="980" Height="680" MinWidth="820" MinHeight="560"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:enums="clr-namespace:YuandaoTws.Domain.Enums;assembly=YuandaoTws.Domain"
+        xmlns:models="clr-namespace:YuandaoTws.Domain.Models;assembly=YuandaoTws.Domain"
+        xmlns:conv="clr-namespace:YuandaoTws.Desktop.Converters"
+        xmlns:viewModels="clr-namespace:YuandaoTws.Desktop.ViewModels"
+        mc:Ignorable="d"
+        Title="原点耳机控制" Width="1000" Height="680" MinWidth="880" MinHeight="600"
         WindowStartupLocation="CenterScreen" WindowStyle="None" AllowsTransparency="False"
-        Background="Transparent" FontFamily="Segoe UI Variable Text"
-        DataContext="{Binding RelativeSource={RelativeSource Self}, Path=ViewModel}">
+        Background="{StaticResource BackgroundBrush}" FontFamily="Microsoft YaHei UI" FontSize="13"
+        d:DataContext="{d:DesignInstance Type=viewModels:DashboardViewModel, IsDesignTimeCreatable=False}">
     <Window.Resources>
-        <Style x:Key="GlassButton" TargetType="Button">
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="14,9"/>
-            <Setter Property="Margin" Value="0,0,8,8"/><Setter Property="FontSize" Value="13"/>
-            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
-            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource HoverBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.78"/></Trigger></Style.Triggers>
-        </Style>
-        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource GlassButton}"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="Transparent"/></Style>
+        <conv:EnumToBooleanConverter x:Key="EnumToBoolean" />
     </Window.Resources>
-    <Border Margin="18" CornerRadius="26" Background="{DynamicResource WindowBrush}" BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="1" Padding="28">
-        <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <Grid MouseLeftButtonDown="DragWindow"><StackPanel><TextBlock Text="ORIGIN" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="原点" FontSize="32" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><TextBlock Text="你的声音，保持在掌控之中" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><Ellipse Width="9" Height="9" Fill="{Binding ConnectionDotBrush}" Margin="0,0,8,0"/><TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/><Button Content="×" Style="{StaticResource GlassButton}" Margin="20,0,0,0" Padding="10,3" Click="CloseWindow"/></StackPanel></Grid>
-            <Border Grid.Row="1" Margin="0,24,0,18" Padding="18" CornerRadius="18" Background="{DynamicResource SurfaceBrush}"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="左耳" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding LeftBatteryText}" FontSize="30" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><TextBlock Text="{Binding LeftChargeText}" Foreground="{DynamicResource AccentBrush}"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="右耳" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding RightBatteryText}" FontSize="30" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><TextBlock Text="{Binding RightChargeText}" Foreground="{DynamicResource AccentBrush}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="充电盒" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding CaseBatteryText}" FontSize="30" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><TextBlock Text="{Binding DeviceName}" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Grid></Border>
-            <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="1.22*"/><ColumnDefinition Width="0.78*"/></Grid.ColumnDefinitions><Border Margin="0,0,10,0" Padding="20" CornerRadius="18" Background="{DynamicResource SurfaceBrush}"><StackPanel><TextBlock Text="降噪模式" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><TextBlock Text="{Binding AncModeText}" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,18"/><WrapPanel><Button Content="关闭" Command="{Binding SetAncCommand}" CommandParameter="Off" Style="{StaticResource GlassButton}"/><Button Content="通透" Command="{Binding SetAncCommand}" CommandParameter="Transparency" Style="{StaticResource GlassButton}"/><Button Content="普通" Command="{Binding SetAncCommand}" CommandParameter="Normal" Style="{StaticResource GlassButton}"/><Button Content="深度" Command="{Binding SetAncCommand}" CommandParameter="Deep" Style="{StaticResource PrimaryButton}"/><Button Content="试验" Command="{Binding SetAncCommand}" CommandParameter="Experimental" Style="{StaticResource GlassButton}"/><Button Content="风噪抑制" Command="{Binding SetAncCommand}" CommandParameter="WindSuppression" Style="{StaticResource GlassButton}"/></WrapPanel><TextBlock Text="均衡器" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,24,0,4"/><TextBlock Text="{Binding EqualizerText}" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,12"/><WrapPanel><Button Content="悔恨之泪" Command="{Binding SetEqualizerCommand}" CommandParameter="Blue" Style="{StaticResource GlassButton}"/><Button Content="均衡中正" Command="{Binding SetEqualizerCommand}" CommandParameter="Balanced" Style="{StaticResource GlassButton}"/><Button Content="欧美澎湃" Command="{Binding SetEqualizerCommand}" CommandParameter="Bass" Style="{StaticResource GlassButton}"/><Button Content="真律还原" Command="{Binding SetEqualizerCommand}" CommandParameter="Pure" Style="{StaticResource GlassButton}"/><Button Content="游戏优化" Command="{Binding SetEqualizerCommand}" CommandParameter="Game" Style="{StaticResource GlassButton}"/><Button Content="细腻佳音" Command="{Binding SetEqualizerCommand}" CommandParameter="Fine" Style="{StaticResource GlassButton}"/><Button Content="温婉人声" Command="{Binding SetEqualizerCommand}" CommandParameter="Vocal" Style="{StaticResource GlassButton}"/></WrapPanel></StackPanel></Border><Border Grid.Column="1" Padding="20" CornerRadius="18" Background="{DynamicResource SurfaceBrush}"><StackPanel><TextBlock Text="设备状态" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/><TextBlock Text="{Binding FirmwareText}" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,20"/><CheckBox Content="游戏模式" IsChecked="{Binding GameModeEnabled}" Command="{Binding ToggleCommand}" CommandParameter="GameMode" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,14"/><CheckBox Content="低延迟" IsChecked="{Binding LowLatencyEnabled}" Command="{Binding ToggleCommand}" CommandParameter="LowLatency" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,14"/><CheckBox Content="双设备连接" IsChecked="{Binding DualConnectionEnabled}" Command="{Binding ToggleCommand}" CommandParameter="DualConnection" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,14"/><CheckBox Content="入耳检测" IsChecked="{Binding InEarEnabled}" Command="{Binding ToggleCommand}" CommandParameter="InEarDetection" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,14"/><Button Content="连接设备" Command="{Binding ConnectCommand}" Style="{StaticResource PrimaryButton}" Margin="0,22,0,0"/><Button Content="断开连接" Command="{Binding DisconnectCommand}" Style="{StaticResource GlassButton}"/></StackPanel></Border></Grid>
-            <TextBlock Grid.Row="3" Text="{Binding HintText}" Foreground="{DynamicResource MutedBrush}" Margin="2,18,0,0"/>
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="7" CornerRadius="0"
+                            GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid Margin="0,0,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="58" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ════════════ 标题栏 ════════════ -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid MouseLeftButtonDown="DragWindow">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
+                        <Border Width="34" Height="34" CornerRadius="9" Background="{StaticResource AccentBrush}" VerticalAlignment="Center">
+                            <TextBlock Text="原" FontSize="17" FontWeight="Bold" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="原点耳机控制" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text="ORIGIN AUDIO" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                        <Ellipse Width="9" Height="9" Fill="{Binding ConnectionDotBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" />
+                    </StackPanel>
+                    <Button Content="&#xE921;" Style="{StaticResource WindowButton}" Click="MinimizeWindow" />
+                    <Button Content="&#xE8BB;" Style="{StaticResource WindowCloseButton}" Click="CloseWindow" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ════════════ 内容区 ════════════ -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="318" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ── 主列：设备状态 + 降噪 + 均衡器 ── -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="28,26,16,24">
+                <StackPanel Margin="0,0,12,0">
+
+                    <!-- 设备与电量卡片 -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <Grid>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding DeviceName}" FontSize="19" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding DeviceSubText}" Style="{StaticResource SectionCaption}" Margin="0,4,0,0" />
+                                </StackPanel>
+                                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding FirmwareText}" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Right" />
+                                    <TextBlock Text="固件版本" Style="{StaticResource SectionCaption}" TextAlignment="Right" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Separator Height="1" Background="{StaticResource DividerBrush}" Margin="0,20,0,20" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 左耳 -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="左耳" Style="{StaticResource StatLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="{Binding LeftBatteryText}" FontSize="30" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding LeftChargeText}" FontSize="12" Foreground="{StaticResource WarningBrush}"
+                                                   VerticalAlignment="Bottom" Margin="8,0,0,6" />
+                                    </StackPanel>
+                                    <ProgressBar Style="{StaticResource BatteryBar}" Value="{Binding LeftBatteryValue}" Margin="0,10,0,0" />
+                                </StackPanel>
+
+                                <!-- 右耳 -->
+                                <StackPanel Grid.Column="1" Margin="28,0,0,0">
+                                    <TextBlock Text="右耳" Style="{StaticResource StatLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="{Binding RightBatteryText}" FontSize="30" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding RightChargeText}" FontSize="12" Foreground="{StaticResource WarningBrush}"
+                                                   VerticalAlignment="Bottom" Margin="8,0,0,6" />
+                                    </StackPanel>
+                                    <ProgressBar Style="{StaticResource BatteryBar}" Value="{Binding RightBatteryValue}" Margin="0,10,0,0" />
+                                </StackPanel>
+
+                                <!-- 充电盒 -->
+                                <StackPanel Grid.Column="2" Margin="28,0,0,0">
+                                    <TextBlock Text="充电盒" Style="{StaticResource StatLabel}" />
+                                    <TextBlock Text="{Binding CaseBatteryText}" FontSize="30" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,6,0,0" />
+                                    <ProgressBar Style="{StaticResource BatteryBar}" Value="{Binding CaseBatteryValue}" Margin="0,10,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 降噪模式卡片 -->
+                    <Border Style="{StaticResource Card}" Margin="0,18,0,0" IsEnabled="{Binding IsConnected}">
+                        <StackPanel>
+                            <TextBlock Text="降噪模式" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding AncDetailText}" Style="{StaticResource SectionCaption}" Margin="0,4,0,16" />
+                            <Border Background="{StaticResource SurfaceSubtleBrush}" CornerRadius="10" Padding="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <RadioButton Grid.Column="0" Style="{StaticResource SegmentItem}" Content="关闭"
+                                                 IsChecked="{Binding AncMode, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Off}"
+                                                 Command="{Binding SetAncCommand}" CommandParameter="{x:Static enums:NoiseCancellingMode.Off}" />
+                                <RadioButton Grid.Column="1" Style="{StaticResource SegmentItem}" Content="通透"
+                                             IsChecked="{Binding AncMode, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Transparency}"
+                                             Command="{Binding SetAncCommand}" CommandParameter="{x:Static enums:NoiseCancellingMode.Transparency}" />
+                                <RadioButton Grid.Column="2" Style="{StaticResource SegmentItem}" Content="普通"
+                                             IsChecked="{Binding AncMode, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Normal}"
+                                             Command="{Binding SetAncCommand}" CommandParameter="{x:Static enums:NoiseCancellingMode.Normal}" />
+                                <RadioButton Grid.Column="3" Style="{StaticResource SegmentItem}" Content="深度"
+                                             IsChecked="{Binding AncMode, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Deep}"
+                                             Command="{Binding SetAncCommand}" CommandParameter="{x:Static enums:NoiseCancellingMode.Deep}" />
+                                <RadioButton Grid.Column="4" Style="{StaticResource SegmentItem}" Content="试验"
+                                             IsChecked="{Binding AncMode, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Experimental}"
+                                             Command="{Binding SetAncCommand}" CommandParameter="{x:Static enums:NoiseCancellingMode.Experimental}" />
+                                <RadioButton Grid.Column="5" Style="{StaticResource SegmentItem}" Content="风噪"
+                                             IsChecked="{Binding AncMode, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=WindSuppression}"
+                                             Command="{Binding SetAncCommand}" CommandParameter="{x:Static enums:NoiseCancellingMode.WindSuppression}" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 均衡器卡片 -->
+                    <Border Style="{StaticResource Card}" Margin="0,18,0,0" IsEnabled="{Binding IsConnected}">
+                        <StackPanel>
+                            <TextBlock Text="均衡器" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding EqualizerDetailText}" Style="{StaticResource SectionCaption}" Margin="0,4,0,16" />
+                            <WrapPanel>
+                                <RadioButton Style="{StaticResource ChipItem}" Content="悔恨之泪"
+                                             IsChecked="{Binding Equalizer, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Blue}"
+                                             Command="{Binding SetEqualizerCommand}" CommandParameter="{x:Static models:EqualizerPreset.Blue}" />
+                                <RadioButton Style="{StaticResource ChipItem}" Content="均衡中正"
+                                             IsChecked="{Binding Equalizer, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Balanced}"
+                                             Command="{Binding SetEqualizerCommand}" CommandParameter="{x:Static models:EqualizerPreset.Balanced}" />
+                                <RadioButton Style="{StaticResource ChipItem}" Content="欧美澎湃"
+                                             IsChecked="{Binding Equalizer, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Bass}"
+                                             Command="{Binding SetEqualizerCommand}" CommandParameter="{x:Static models:EqualizerPreset.Bass}" />
+                                <RadioButton Style="{StaticResource ChipItem}" Content="真律还原"
+                                             IsChecked="{Binding Equalizer, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Pure}"
+                                             Command="{Binding SetEqualizerCommand}" CommandParameter="{x:Static models:EqualizerPreset.Pure}" />
+                                <RadioButton Style="{StaticResource ChipItem}" Content="游戏优化"
+                                             IsChecked="{Binding Equalizer, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Game}"
+                                             Command="{Binding SetEqualizerCommand}" CommandParameter="{x:Static models:EqualizerPreset.Game}" />
+                                <RadioButton Style="{StaticResource ChipItem}" Content="细腻佳音"
+                                             IsChecked="{Binding Equalizer, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Fine}"
+                                             Command="{Binding SetEqualizerCommand}" CommandParameter="{x:Static models:EqualizerPreset.Fine}" />
+                                <RadioButton Style="{StaticResource ChipItem}" Content="温婉人声"
+                                             IsChecked="{Binding Equalizer, Mode=TwoWay, Converter={StaticResource EnumToBoolean}, ConverterParameter=Vocal}"
+                                             Command="{Binding SetEqualizerCommand}" CommandParameter="{x:Static models:EqualizerPreset.Vocal}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── 侧栏：声音与连接偏好 ── -->
+            <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <StackPanel Margin="22,26,22,24">
+                    <TextBlock Text="声音与连接偏好" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="连接后可调整以下设置。" Style="{StaticResource SectionCaption}" Margin="0,4,0,18" />
+
+                    <StackPanel IsEnabled="{Binding IsConnected}">
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="游戏模式" Style="{StaticResource StatLabel}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" IsChecked="{Binding GameModeEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Command="{Binding SetToggleCommand}" CommandParameter="GameMode" Style="{StaticResource SwitchToggle}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="低延迟" Style="{StaticResource StatLabel}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" IsChecked="{Binding LowLatencyEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Command="{Binding SetToggleCommand}" CommandParameter="LowLatency" Style="{StaticResource SwitchToggle}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="双设备连接" Style="{StaticResource StatLabel}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" IsChecked="{Binding DualConnectionEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Command="{Binding SetToggleCommand}" CommandParameter="DualConnection" Style="{StaticResource SwitchToggle}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="入耳检测" Style="{StaticResource StatLabel}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" IsChecked="{Binding InEarEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Command="{Binding SetToggleCommand}" CommandParameter="InEarDetection" Style="{StaticResource SwitchToggle}" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="抗风噪" Style="{StaticResource StatLabel}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" IsChecked="{Binding WindSuppressionEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Command="{Binding SetToggleCommand}" CommandParameter="WindSuppression" Style="{StaticResource SwitchToggle}" />
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Background="{StaticResource SurfaceSubtleBrush}" CornerRadius="10" Padding="14,12" Margin="0,22,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{Binding ConnectionDotBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ConnectionSubText}" Style="{StaticResource SectionCaption}"
+                                       TextWrapping="Wrap" FontSize="12" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
         </Grid>
-    </Border>
+    </Grid>
 </Window>

@@ -7,11 +7,11 @@ namespace YuandaoTws.Desktop.Services;
 
 public sealed class TaskbarOverlayService : IDisposable
 {
-    private readonly Window _window;
+    private readonly MainWindow _window;
     private readonly DashboardViewModel _viewModel;
     private HwndSource? _source;
 
-    public TaskbarOverlayService(Window window, DashboardViewModel viewModel)
+    public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel)
     {
         _window = window;
         _viewModel = viewModel;
