@@ -8,6 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <!-- WPF 的 DPI 感知依赖 app.manifest；WinForms 分析器 WFAC010 建议改用 ApplicationHighDpiMode，
          但该属性只作用于 WinForms 入口点（本应用为 WPF 入口），因此抑制这条警告。 -->
@@ -26,5 +27,8 @@
   <ItemGroup>
     <ProjectReference Include="..\YuandaoTws.Application\YuandaoTws.Application.csproj" />
     <ProjectReference Include="..\YuandaoTws.Infrastructure\YuandaoTws.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
   </ItemGroup>
 </Project>

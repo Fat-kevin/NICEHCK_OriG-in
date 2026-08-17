@@ -15,7 +15,7 @@ public sealed class TrayIconService : IDisposable
     {
         _viewModel = viewModel;
         _mainWindow = mainWindow;
-        _icon.Icon = SystemIcons.Application;
+        _icon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Windows.Application.ResourceAssembly.Location) ?? SystemIcons.Application;
         _icon.ToolTipText = "原点耳机控制";
         _icon.ContextMenu = new System.Windows.Controls.ContextMenu();
         AddMenuItem("打开控制面板", (_, _) => ShowMainWindow());
