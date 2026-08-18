@@ -4,6 +4,10 @@ title YuandaoTws Desktop
 
 cd /d "%~dp0"
 
+rem 某些精简启动器不会继承 WINDIR，WPF 字体缓存需要它来定位 Windows\Fonts。
+if not defined WINDIR if defined SystemRoot set "WINDIR=%SystemRoot%"
+if not defined WINDIR set "WINDIR=%SystemDrive%\Windows"
+
 rem Stop the previous instance so native DLLs can be rebuilt safely.
 taskkill /f /im YuandaoTws.Desktop.exe >nul 2>&1
 taskkill /f /im YuandaoTws.App.exe >nul 2>&1

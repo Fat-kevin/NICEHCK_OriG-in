@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using Microsoft.Extensions.Logging;
 using YuandaoTws.Desktop.ViewModels;
 
 namespace YuandaoTws.Desktop.Services;
@@ -14,14 +15,16 @@ public sealed class TaskbarOverlayService : IDisposable
 {
     private readonly MainWindow _window;
     private readonly DashboardViewModel _viewModel;
+    private readonly ILogger<TaskbarOverlayService> _logger;
     private IntPtr _hwnd;
     private ITaskbarList3? _taskbar;
-    private TaskbarBatteryWindow? _batteryWindow;
+    private NativeTaskbarBatteryWindow? _batteryWindow;
 
-    public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel)
+    public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel, ILogger<TaskbarOverlayService> logger)
     {
         _window = window;
         _viewModel = viewModel;
+        _logger = logger;
         _window.SourceInitialized += OnSourceInitialized;
         _viewModel.PropertyChanged += OnViewModelChanged;
     }
@@ -45,17 +48,39 @@ public sealed class TaskbarOverlayService : IDisposable
         }
 
         UpdateOverlay();
-        _batteryWindow = new TaskbarBatteryWindow(_viewModel, ShowMainWindow);
-        _batteryWindow.Show();
+        try
+        {
+            _batteryWindow = new NativeTaskbarBatteryWindow(ShowMainWindow, _window.Dispatcher);
+            _batteryWindow.Show(
+                _viewModel.IsConnected,
+                _viewModel.IsSearching,
+                _viewModel.LeftBatteryValue,
+                _viewModel.RightBatteryValue);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "原生任务栏电量控件初始化失败，将继续运行主界面和任务栏进度");
+            _batteryWindow?.Dispose();
+            _batteryWindow = null;
+        }
     }
 
     private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(DashboardViewModel.IsConnected)
+            or nameof(DashboardViewModel.IsSearching)
             or nameof(DashboardViewModel.LeftBatteryText)
             or nameof(DashboardViewModel.RightBatteryText)
-            or nameof(DashboardViewModel.CaseBatteryText))
+            or nameof(DashboardViewModel.CaseBatteryText)
+            or nameof(DashboardViewModel.LeftBatteryValue)
+            or nameof(DashboardViewModel.RightBatteryValue)
+            or nameof(DashboardViewModel.CaseBatteryValue))
         {
+            _batteryWindow?.UpdateStatus(
+                _viewModel.IsConnected,
+                _viewModel.IsSearching,
+                _viewModel.LeftBatteryValue,
+                _viewModel.RightBatteryValue);
             UpdateOverlay();
         }
     }
@@ -87,8 +112,6 @@ public sealed class TaskbarOverlayService : IDisposable
             _window.WindowState = WindowState.Normal;
         }
         _window.Activate();
-        _window.Topmost = true;
-        _window.Topmost = false;
     }
 
     /// <summary>左耳优先，其次右耳，再充电盒；未知（0）时返回 0。</summary>
@@ -123,7 +146,7 @@ public sealed class TaskbarOverlayService : IDisposable
 
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _window.SourceInitialized -= OnSourceInitialized;
-        _batteryWindow?.Close();
+        _batteryWindow?.Dispose();
         _batteryWindow = null;
     }
 
