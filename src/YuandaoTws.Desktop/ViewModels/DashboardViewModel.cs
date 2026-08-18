@@ -7,6 +7,7 @@ using YuandaoTws.Application.Services;
 using YuandaoTws.Domain.Abstractions;
 using YuandaoTws.Domain.Enums;
 using YuandaoTws.Domain.Models;
+using YuandaoTws.Desktop.Services;
 
 namespace YuandaoTws.Desktop.ViewModels;
 
@@ -19,6 +20,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly HeadsetConnectionService _connection;
     private readonly HeadsetControlService _control;
     private readonly NoiseCancellingService _anc;
+    private readonly WindowsStartupService _startup;
     private readonly IDisposable _controlSubscription;
     private readonly IDisposable _deviceSubscription;
     private readonly IDisposable _stateSubscription;
@@ -65,6 +67,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _dualConnectionEnabled;
     [ObservableProperty] private bool _inEarEnabled;
     [ObservableProperty] private bool _windSuppressionEnabled;
+    [ObservableProperty] private bool _startWithWindows;
     [ObservableProperty] private string _ancDetailText = "尚未连接耳机";
     [ObservableProperty] private string _ancStatusText = "降噪状态未知";
     [ObservableProperty] private string _equalizerDetailText = "尚未连接耳机";
@@ -75,11 +78,14 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         HeadsetConnectionService connection,
         HeadsetControlService control,
         NoiseCancellingService anc,
-        YuandaoChargingMonitorService chargingMonitor)
+        YuandaoChargingMonitorService chargingMonitor,
+        WindowsStartupService startup)
     {
         _connection = connection;
         _control = control;
         _anc = anc;
+        _startup = startup;
+        StartWithWindows = startup.IsEnabled;
         _controlSubscription = control.StateChanged
             .ObserveOn(System.Reactive.Concurrency.DispatcherScheduler.Current)
             .Subscribe(ApplyState);
@@ -450,6 +456,27 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         HeadsetToggleFeature.WindSuppression => "抗风噪",
         _ => feature.ToString(),
     };
+
+    /// <summary>设置当前用户的开机启动；启动后默认隐藏到通知区域，避免打扰桌面。</summary>
+    [RelayCommand]
+    private void SetStartup(object? value)
+    {
+        var enabled = value is bool requested ? requested : StartWithWindows;
+        try
+        {
+            if (!_startup.SetEnabled(enabled))
+            {
+                throw new InvalidOperationException("Windows 没有接受开机启动设置。");
+            }
+
+            StartWithWindows = enabled;
+        }
+        catch (Exception ex)
+        {
+            StartWithWindows = !enabled;
+            ConnectionSubText = $"开机启动设置失败：{ex.Message}";
+        }
+    }
 
     private static string FormatPercent(byte? value) => value is null ? "—" : $"{value}%";
 

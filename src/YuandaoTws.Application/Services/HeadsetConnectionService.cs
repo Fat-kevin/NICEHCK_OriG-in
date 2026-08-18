@@ -31,6 +31,7 @@ public sealed class HeadsetConnectionService : IDisposable
     private CancellationTokenSource? _reconnectCts;
     private int _reconnectAttempt;
     private long _connectionGeneration;
+    private int _disposed;
 
     public HeadsetConnectionService(
         IBluetoothDeviceScanner scanner,
@@ -64,6 +65,7 @@ public sealed class HeadsetConnectionService : IDisposable
 
     public async Task StartScanAsync(CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         StopScanSubscription();
         _devices.Clear();
         _scanSubscription = _scanner.DevicesDiscovered.Subscribe(OnDeviceDiscovered);
@@ -83,6 +85,7 @@ public sealed class HeadsetConnectionService : IDisposable
 
     public async Task ConnectAsync(HeadsetDevice device, CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         await DisconnectAsync();
         CancelReconnect();
         _lastDevice = device;
@@ -111,8 +114,15 @@ public sealed class HeadsetConnectionService : IDisposable
 
     private async Task OpenSessionsAsync(HeadsetDevice device, CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         var generation = Interlocked.Increment(ref _connectionGeneration);
         var control = await _sppConnectionFactory.OpenAsync(device, _protocol.ServiceUuid, cancellationToken);
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            await control.DisposeAsync();
+            throw new ObjectDisposedException(nameof(HeadsetConnectionService));
+        }
+
         _controlSession = control;
         control.ConnectionLost += OnControlConnectionLost;
         ControlSessionChanged?.Invoke(control, generation);
@@ -215,6 +225,11 @@ public sealed class HeadsetConnectionService : IDisposable
 
     private void StartReconnectLoop()
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         CancelReconnect();
         _reconnectCts = new CancellationTokenSource();
         _ = Task.Run(() => ReconnectLoopAsync(_reconnectCts.Token));
@@ -228,7 +243,7 @@ public sealed class HeadsetConnectionService : IDisposable
             return;
         }
 
-        while (!cancellationToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested && Volatile.Read(ref _disposed) == 0)
         {
             try
             {
@@ -273,8 +288,15 @@ public sealed class HeadsetConnectionService : IDisposable
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         StopScanSubscription();
         CancelReconnect();
+        // 取消重连并立即启动所有 WinRT 会话的异步释放，避免退出后继续持有蓝牙句柄。
+        _ = ReleaseSessionsAsync();
         _devicesDiscovered.Dispose();
         _stateChanged.Dispose();
     }
