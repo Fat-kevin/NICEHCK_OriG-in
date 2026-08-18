@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 330 500" width="330" height="500">
+  <title>Yuandao left earbud floating animation</title>
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur="2.6s" repeatCount="indefinite" />
+    <animateTransform attributeName="transform" type="rotate" values="-3 165 250;3 165 250;-3 165 250" dur="3.8s" repeatCount="indefinite" additive="sum" />
+    <image x="0" y="0" width="330" height="500" preserveAspectRatio="xMidYMid meet" href="yuandao-earbud-left.png" xlink:href="yuandao-earbud-left.png" />
+  </g>
+</svg>

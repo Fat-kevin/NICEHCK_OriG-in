@@ -1,30 +1,36 @@
 @echo off
-chcp 936 >nul
-title 原点耳机控制
-echo ==========================================
-echo   原点耳机控制（生产版 YuandaoTws.Desktop）
-echo   正在准备，请稍候...
-echo ==========================================
-echo.
+chcp 65001 >nul
+title YuandaoTws Desktop
 
 cd /d "%~dp0"
 
-rem 杀掉旧实例：运行中的 exe 会锁住 DLL，导致构建复制失败
+rem Stop the previous instance so native DLLs can be rebuilt safely.
 taskkill /f /im YuandaoTws.Desktop.exe >nul 2>&1
 taskkill /f /im YuandaoTws.App.exe >nul 2>&1
 
-echo [1/2] 正在编译生产版...
-dotnet build src/YuandaoTws.Desktop -v q
+set "DOTNET=dotnet"
+where dotnet >nul 2>&1
+if errorlevel 1 (
+    set "DOTNET=%ProgramFiles%\dotnet\dotnet.exe"
+    if not exist "%ProgramFiles%\dotnet\dotnet.exe" (
+        echo .NET 8 SDK was not found. Please install the .NET 8 SDK first.
+        pause
+        exit /b 1
+    )
+)
+
+echo [1/2] Building YuandaoTws.Desktop for x64...
+set "RESTORE_MODE="
+if exist "src\YuandaoTws.Desktop\obj\project.assets.json" set "RESTORE_MODE=--no-restore"
+"%DOTNET%" build src/YuandaoTws.Desktop -c Debug -p:Platform=x64 -p:PlatformTarget=x64 %RESTORE_MODE% -v q
 if errorlevel 1 (
     echo.
-    echo 编译失败。请确认已安装 .NET 8 SDK，并查看上方报错信息。
+    echo Build failed. Check the error output above.
     pause
     exit /b 1
 )
 
-echo [2/2] 编译完成，正在启动...
-start "" "%~dp0src\YuandaoTws.Desktop\bin\Debug\net8.0-windows10.0.19041.0\YuandaoTws.Desktop.exe"
+echo [2/2] Build complete. Starting the desktop app...
+start "" "%~dp0src\YuandaoTws.Desktop\bin\x64\Debug\net8.0-windows10.0.19041.0\YuandaoTws.Desktop.exe"
 
-echo.
-echo 程序已启动。若未自动连接耳机，请先在 Windows 蓝牙设置中与耳机配对。
 exit /b 0

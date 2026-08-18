@@ -20,7 +20,8 @@ public sealed class SppDeviceSession : ISppDeviceSession
     private readonly StreamSocket _socket;
     private readonly DataWriter _writer;
     private readonly ILogger<SppDeviceSession> _logger;
-    private readonly Subject<SppDataReceived> _data = new();
+    // RFCOMM 服务可能在连接完成瞬间就推送首帧；保留极短窗口，避免上层订阅时错过状态帧。
+    private readonly ReplaySubject<SppDataReceived> _data = new(bufferSize: 4);
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly CancellationTokenSource _readCts = new();
     private readonly Task _readLoop;

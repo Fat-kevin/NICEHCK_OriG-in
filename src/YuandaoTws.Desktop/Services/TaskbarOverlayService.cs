@@ -16,6 +16,7 @@ public sealed class TaskbarOverlayService : IDisposable
     private readonly DashboardViewModel _viewModel;
     private IntPtr _hwnd;
     private ITaskbarList3? _taskbar;
+    private TaskbarBatteryWindow? _batteryWindow;
 
     public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel)
     {
@@ -44,6 +45,8 @@ public sealed class TaskbarOverlayService : IDisposable
         }
 
         UpdateOverlay();
+        _batteryWindow = new TaskbarBatteryWindow(_viewModel, ShowMainWindow);
+        _batteryWindow.Show();
     }
 
     private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -74,6 +77,18 @@ public sealed class TaskbarOverlayService : IDisposable
 
         _taskbar.SetProgressState(_hwnd, TbpFlag.Normal);
         _taskbar.SetProgressValue(_hwnd, (ulong)percent, 100);
+    }
+
+    private void ShowMainWindow()
+    {
+        _window.Show();
+        if (_window.WindowState == WindowState.Minimized)
+        {
+            _window.WindowState = WindowState.Normal;
+        }
+        _window.Activate();
+        _window.Topmost = true;
+        _window.Topmost = false;
     }
 
     /// <summary>左耳优先，其次右耳，再充电盒；未知（0）时返回 0。</summary>
@@ -108,6 +123,8 @@ public sealed class TaskbarOverlayService : IDisposable
 
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _window.SourceInitialized -= OnSourceInitialized;
+        _batteryWindow?.Close();
+        _batteryWindow = null;
     }
 
     // ---- ITaskbarList3 COM 定义（经典已知结构，Vtable 顺序必须保持） ----

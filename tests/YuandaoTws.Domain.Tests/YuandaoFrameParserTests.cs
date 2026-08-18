@@ -81,16 +81,32 @@ public class YuandaoFrameParserTests
     {
         var message = new YuandaoMessage { Id = 0x03, Payload = [0x64, 0x64, 0x64] };
 
-        YuandaoFrameSemantics.Describe(message).Should().Be("电量（疑似）：左 100% 右 100% 盒 100%");
+        YuandaoFrameSemantics.Describe(message).Should().Be("状态电量（未含充电标志）：左 100% 右 100% 盒 100%");
     }
 
     [Fact]
-    public void Describe_id03电量字节bit7为充电标志()
+    public void Describe_id03不把高位误判为充电标志()
     {
-        // 实测帧：E4 E4 64（verify 日志），E4 & 0x7F = 100，bit7=1 表示充电中。
+        // 新的逐阶段实测表明 USB 插拔前后没有任何字段变化，E4 不能解释为充电标志。
         var message = new YuandaoMessage { Id = 0x03, Payload = [0xE4, 0xE4, 0x64] };
 
-        YuandaoFrameSemantics.Describe(message).Should().Be("电量（疑似）：左 100%(充电中) 右 100%(充电中) 盒 100%");
+        YuandaoFrameSemantics.Describe(message).Should().Be("状态电量（未含充电标志）：左 未知 右 未知 盒 100%");
+    }
+
+    [Fact]
+    public void TryParseBattery_id03不伪造充电状态且按直接百分比解析()
+    {
+        var message = new YuandaoMessage { Id = 0x03, Payload = [0x5A, 0x64, 0x64] };
+
+        var battery = YuandaoFrameSemantics.TryParseBattery(message);
+
+        battery.Should().NotBeNull();
+        battery!.LeftEarPercent.Should().Be(90);
+        battery.RightEarPercent.Should().Be(100);
+        battery.CasePercent.Should().Be(100);
+        battery.IsLeftEarCharging.Should().BeNull();
+        battery.IsRightEarCharging.Should().BeNull();
+        battery.IsCaseCharging.Should().BeNull();
     }
 
     [Fact]
@@ -107,7 +123,7 @@ public class YuandaoFrameParserTests
         var message = new YuandaoMessage { Id = 0x03, Payload = [0x64, 0x64, 0x64] };
 
         YuandaoFrameSemantics.FormatFrame(message)
-            .Should().Be("03 03 00 03 64 64 64 = 电量（疑似）：左 100% 右 100% 盒 100%");
+            .Should().Be("03 03 00 03 64 64 64 = 状态电量（未含充电标志）：左 100% 右 100% 盒 100%");
     }
 
     [Fact]

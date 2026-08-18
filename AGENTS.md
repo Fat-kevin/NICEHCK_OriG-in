@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 原道「原点」TWS 降噪耳机的 Windows 控制工具（C#/.NET 8 + WPF + WinRT 蓝牙）。
 
