@@ -11,6 +11,8 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <!-- Win2D/Windows App SDK 的单文件发布需要启用资源打包工具链。 -->
+    <EnableMsixTooling>true</EnableMsixTooling>
     <!-- 单文件发布时把 WPF 原生库一并嵌入 exe（运行时自解压到临时目录），实现真正的单文件分发 -->
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <!-- WPF 的 DPI 感知依赖 app.manifest；WinForms 分析器 WFAC010 建议改用 ApplicationHighDpiMode，

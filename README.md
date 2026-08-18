@@ -35,7 +35,7 @@ WPF + WinRT 蓝牙 + 原生 Win32 Shell / DWM / Composition，保持普通 Windo
 | UI | C# / .NET 8 / WPF / MVVM |
 | 桌面集成 | 原生 `Shell_NotifyIcon`、任务栏电量进度、Win32 状态面板 |
 | 状态更新 | 连接后立即查询，电量默认每 30 秒查询一次；收到设备数据即刷新 UI |
-| 发布方式 | `win-x64` 单文件、自包含 EXE |
+| 发布方式 | GitHub Release 提供自包含版、.NET 8 运行时版和诊断工具版 |
 
 ## 设备资产
 
@@ -144,6 +144,28 @@ sequenceDiagram
 
 这样做可以避免“按钮变蓝了，但耳机其实没有切换”的假成功状态。
 
+## 下载正式版本
+
+最新版本：**[v0.1.0](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases/tag/v0.1.0)**
+
+| 下载包 | 适合谁 | 依赖 |
+| --- | --- | --- |
+| `YuandaoTws-Desktop-v0.1.0-win-x64-standalone.zip` | 推荐；普通用户直接使用 | 不需要安装 .NET |
+| `YuandaoTws-Desktop-v0.1.0-win-x64-runtime.zip` | 已安装 .NET 8 的用户 | .NET 8 Desktop Runtime |
+| `YuandaoTws-Inspector-v0.1.0-win-x64-standalone.zip` | 协议探测、SPP/GATT 调试和日志采集 | 不需要安装 .NET |
+| `SHA256SUMS.txt` | 校验下载完整性 | Windows PowerShell / `certutil` |
+
+### 推荐安装方式
+
+1. 下载 `Desktop ... standalone.zip`。
+2. 解压到一个固定目录，例如 `C:\Program Files\YuandaoTws` 或个人工具目录。
+3. 运行 `YuandaoTws.Desktop.exe`；首次运行前先在 Windows 蓝牙设置中完成配对。
+4. 需要开机常驻时，将 EXE 快捷方式放入 `shell:startup`，不要重复启动多个实例。
+
+Release 页面同时提供源码压缩包。升级时只需退出旧程序、替换解压目录中的文件即可；用户配置和日志不会写入仓库目录之外的系统文件。
+
+> Windows SmartScreen 可能会对个人签名的未签名 EXE 显示提示，这是发布者证书信誉问题，不代表程序被浏览器套壳或包含 WebView。
+
 ## 安装、构建与运行
 
 ### 使用条件
@@ -178,10 +200,11 @@ dotnet publish src/YuandaoTws.Desktop `
   -r win-x64 `
   --self-contained true `
   /p:PublishSingleFile=true `
+  /p:EnableMsixTooling=true `
   /p:DebugType=None
 ```
 
-输出是可直接复制到其它 Windows 机器的自包含 EXE；WPF 原生库按项目配置嵌入并在运行时解压。
+输出是可直接复制到其它 Windows 机器的自包含 EXE。由于 Win2D/Windows App SDK 的资源要求，单文件发布会启用 `EnableMsixTooling`；程序仍然是普通 WPF HWND，不会变成 MSIX 或浏览器应用。
 
 ## 项目结构
 
