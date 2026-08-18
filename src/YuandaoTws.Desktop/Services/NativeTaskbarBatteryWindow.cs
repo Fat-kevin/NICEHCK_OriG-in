@@ -19,6 +19,7 @@ public sealed class NativeTaskbarBatteryWindow : IDisposable
     private const int BaseWidth = 198;
     private const int BaseHeight = 36;
     private const int BaseRadius = 10;
+    private const int HorizontalOffset = 240;
     private const uint TimerId = 1;
     private const uint TimerIntervalMs = 2500;
 
@@ -251,14 +252,21 @@ public sealed class NativeTaskbarBatteryWindow : IDisposable
 
         EnsureDpi();
         var workArea = GetWorkArea();
-        var x = workArea.Left + Scale(8);
+        var x = workArea.Left + Scale(HorizontalOffset);
         var y = workArea.Bottom - _height;
         if (_taskbarHwnd != IntPtr.Zero && GetWindowRect(_taskbarHwnd, out var taskbar))
         {
             var horizontal = taskbar.Width >= taskbar.Height * 2;
             if (horizontal)
             {
+                var minimum = Scale(8);
+                var maximum = Math.Max(minimum, taskbar.Width - _width - Scale(8));
+                x = taskbar.Left + Math.Clamp(Scale(HorizontalOffset), minimum, maximum);
                 y = taskbar.Top + Math.Max(0, (taskbar.Height - _height) / 2);
+            }
+            else
+            {
+                x = taskbar.Left + Math.Max(0, (taskbar.Width - _width) / 2);
             }
         }
 
