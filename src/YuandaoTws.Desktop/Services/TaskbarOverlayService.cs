@@ -44,7 +44,7 @@ public sealed class TaskbarOverlayService : IDisposable
             _taskbar = (ITaskbarList3)new CTaskbarList();
             _taskbar.HrInit();
         }
-        catch (COMException)
+        catch (Exception ex) when (ex is COMException or InvalidCastException)
         {
             // 远程会话或精简环境没有任务栏 COM 对象时，主界面仍可正常运行。
             _taskbar = null;
@@ -178,25 +178,16 @@ public sealed class TaskbarOverlayService : IDisposable
 
     // ---- ITaskbarList3 COM 定义（经典已知结构，Vtable 顺序必须保持） ----
 
-    [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList
+    [ComImport, Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface ITaskbarList3
     {
+        // 这里必须平铺完整 vtable，不能通过 C# 接口继承调用基接口方法。
         void HrInit();
         void AddTab(IntPtr hwnd);
         void DeleteTab(IntPtr hwnd);
         void ActivateTab(IntPtr hwnd);
         void SetActiveAlt(IntPtr hwnd);
-    }
-
-    [ComImport, Guid("602D4995-B13A-429B-A66E-1935E44F4317"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList2 : ITaskbarList
-    {
         void MarkFullscreenWindow(IntPtr hwnd, bool fullscreen);
-    }
-
-    [ComImport, Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList3 : ITaskbarList2
-    {
         void SetProgressValue(IntPtr hwnd, ulong ullCompleted, ulong ullTotal);
         void SetProgressState(IntPtr hwnd, TbpFlag tbpFlags);
         void RegisterTab(IntPtr hwndTab, IntPtr hwndMDI);
