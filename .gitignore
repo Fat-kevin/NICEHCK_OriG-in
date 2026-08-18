@@ -6,4 +6,3 @@
 probe/*.txt
 logs/
 artifacts/
-.claude/settings.local.json
