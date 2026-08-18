@@ -2,28 +2,29 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using Microsoft.Extensions.Logging;
 using YuandaoTws.Desktop.ViewModels;
 
 namespace YuandaoTws.Desktop.Services;
 
 /// <summary>
-/// 使用 Windows 官方任务栏扩展显示耳机状态：任务栏按钮覆盖图标 + 单耳优先电量进度。
-/// 精确左右耳百分比由通知区域图标的提示文本提供，不创建独立悬浮窗口。
+/// 在任务栏图标上叠加耳机电池进度（ITaskbarList3.SetProgressValue / SetProgressState）。
+/// 电池来源取 ViewModel 中左耳优先、右耳次之、充电盒兜底；未连接时清除进度条。
 /// </summary>
 public sealed class TaskbarOverlayService : IDisposable
 {
     private readonly MainWindow _window;
     private readonly DashboardViewModel _viewModel;
+    private readonly ILogger<TaskbarOverlayService> _logger;
     private IntPtr _hwnd;
     private ITaskbarList3? _taskbar;
-    private HwndSource? _source;
-    private IntPtr _overlayIcon;
-    private static readonly uint TaskbarButtonCreatedMessage = RegisterWindowMessage("TaskbarButtonCreated");
+    private NativeTaskbarBatteryWindow? _batteryWindow;
 
-    public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel)
+    public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel, ILogger<TaskbarOverlayService> logger)
     {
         _window = window;
         _viewModel = viewModel;
+        _logger = logger;
         _window.SourceInitialized += OnSourceInitialized;
         _viewModel.PropertyChanged += OnViewModelChanged;
     }
@@ -36,21 +37,32 @@ public sealed class TaskbarOverlayService : IDisposable
             return;
         }
 
-        _source = HwndSource.FromHwnd(_hwnd);
-        _source?.AddHook(WindowProc);
-
         try
         {
             _taskbar = (ITaskbarList3)new CTaskbarList();
-            _taskbar.HrInit();
         }
-        catch (Exception ex) when (ex is COMException or InvalidCastException)
+        catch (COMException)
         {
-            // 远程会话或精简环境没有任务栏 COM 对象时，主界面仍可正常运行。
+            // 部分远程会话 / 精简环境没有任务栏 COM 对象，静默降级为无任务栏进度。
             _taskbar = null;
         }
 
         UpdateOverlay();
+        try
+        {
+            _batteryWindow = new NativeTaskbarBatteryWindow(ShowMainWindow, _window.Dispatcher);
+            _batteryWindow.Show(
+                _viewModel.IsConnected,
+                _viewModel.IsSearching,
+                _viewModel.LeftBatteryValue,
+                _viewModel.RightBatteryValue);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "原生任务栏电量控件初始化失败，将继续运行主界面和任务栏进度");
+            _batteryWindow?.Dispose();
+            _batteryWindow = null;
+        }
     }
 
     private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -60,12 +72,15 @@ public sealed class TaskbarOverlayService : IDisposable
             or nameof(DashboardViewModel.LeftBatteryText)
             or nameof(DashboardViewModel.RightBatteryText)
             or nameof(DashboardViewModel.CaseBatteryText)
-            or nameof(DashboardViewModel.LeftChargeText)
-            or nameof(DashboardViewModel.RightChargeText)
             or nameof(DashboardViewModel.LeftBatteryValue)
             or nameof(DashboardViewModel.RightBatteryValue)
             or nameof(DashboardViewModel.CaseBatteryValue))
         {
+            _batteryWindow?.UpdateStatus(
+                _viewModel.IsConnected,
+                _viewModel.IsSearching,
+                _viewModel.LeftBatteryValue,
+                _viewModel.RightBatteryValue);
             UpdateOverlay();
         }
     }
@@ -77,9 +92,7 @@ public sealed class TaskbarOverlayService : IDisposable
             return;
         }
 
-        UpdateTaskbarIcon();
-
-        // 任务栏进度条作为单耳优先的紧凑状态提示；详细左右耳百分比在通知区域提示中显示。
+        // 只读 VM 暴露的绑定源，不引入新状态：连接成功后才显示进度，断开/未知显示 0。
         var percent = _viewModel.IsConnected ? ResolveBatteryPercent() : 0;
         if (percent <= 0)
         {
@@ -91,49 +104,14 @@ public sealed class TaskbarOverlayService : IDisposable
         _taskbar.SetProgressValue(_hwnd, (ulong)percent, 100);
     }
 
-    private void UpdateTaskbarIcon()
+    private void ShowMainWindow()
     {
-        var nextIcon = BatteryStatusIconFactory.Create(
-            _viewModel.IsConnected,
-            _viewModel.LeftBatteryValue,
-            _viewModel.RightBatteryValue,
-            !string.IsNullOrEmpty(_viewModel.LeftChargeText),
-            !string.IsNullOrEmpty(_viewModel.RightChargeText));
-
-        try
+        _window.Show();
+        if (_window.WindowState == WindowState.Minimized)
         {
-            _taskbar!.SetOverlayIcon(_hwnd, nextIcon, BuildStatusDescription());
-            BatteryStatusIconFactory.Destroy(_overlayIcon);
-            _overlayIcon = nextIcon;
+            _window.WindowState = WindowState.Normal;
         }
-        catch (COMException)
-        {
-            BatteryStatusIconFactory.Destroy(nextIcon);
-        }
-    }
-
-    private string BuildStatusDescription()
-    {
-        if (!_viewModel.IsConnected)
-        {
-            return _viewModel.IsSearching ? "原点耳机：正在连接" : "原点耳机：等待连接";
-        }
-
-        var left = FormatBattery(_viewModel.LeftBatteryValue);
-        var right = FormatBattery(_viewModel.RightBatteryValue);
-        return $"原点耳机：左耳 {left} · 右耳 {right}";
-    }
-
-    private static string FormatBattery(double value) => value > 0 ? $"{Math.Round(value):0}%" : "—";
-
-    private IntPtr WindowProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
-    {
-        if ((uint)message == TaskbarButtonCreatedMessage)
-        {
-            UpdateOverlay();
-        }
-
-        return IntPtr.Zero;
+        _window.Activate();
     }
 
     /// <summary>左耳优先，其次右耳，再充电盒；未知（0）时返回 0。</summary>
@@ -159,35 +137,40 @@ public sealed class TaskbarOverlayService : IDisposable
             try
             {
                 _taskbar.SetProgressState(_hwnd, TbpFlag.NoProgress);
-                _taskbar.SetOverlayIcon(_hwnd, IntPtr.Zero, string.Empty);
             }
             catch (COMException)
             {
-                // 任务栏已退出时忽略清理失败。
+                // 窗口已销毁时忽略，不影响退出。
             }
         }
 
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _window.SourceInitialized -= OnSourceInitialized;
-        _source?.RemoveHook(WindowProc);
-        _source = null;
-        BatteryStatusIconFactory.Destroy(_overlayIcon);
-        _overlayIcon = IntPtr.Zero;
-        _taskbar = null;
+        _batteryWindow?.Dispose();
+        _batteryWindow = null;
     }
 
     // ---- ITaskbarList3 COM 定义（经典已知结构，Vtable 顺序必须保持） ----
 
-    [ComImport, Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList3
+    [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface ITaskbarList
     {
-        // 这里必须平铺完整 vtable，不能通过 C# 接口继承调用基接口方法。
         void HrInit();
         void AddTab(IntPtr hwnd);
         void DeleteTab(IntPtr hwnd);
         void ActivateTab(IntPtr hwnd);
         void SetActiveAlt(IntPtr hwnd);
+    }
+
+    [ComImport, Guid("602D4995-B13A-429B-A66E-1935E44F4317"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface ITaskbarList2 : ITaskbarList
+    {
         void MarkFullscreenWindow(IntPtr hwnd, bool fullscreen);
+    }
+
+    [ComImport, Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface ITaskbarList3 : ITaskbarList2
+    {
         void SetProgressValue(IntPtr hwnd, ulong ullCompleted, ulong ullTotal);
         void SetProgressState(IntPtr hwnd, TbpFlag tbpFlags);
         void RegisterTab(IntPtr hwndTab, IntPtr hwndMDI);
@@ -224,7 +207,4 @@ public sealed class TaskbarOverlayService : IDisposable
         public int Right;
         public int Bottom;
     }
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern uint RegisterWindowMessage(string message);
 }
