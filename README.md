@@ -32,10 +32,10 @@
 
 ## 桌面界面
 
-当前生产版使用 **WPF + DWM Mica** 的轻量 Windows Fluent 风格：
+当前生产版使用 **WPF + Windows Composition Host Backdrop + Win2D GPU Blur** 的轻量 Windows Fluent 风格：
 
 - 中文界面，遵循 Windows 桌面控件语义；
-- 使用系统窗口圆角、阴影与 Mica 背板，不采用 CPU 模糊或截图模拟；
+- 使用原生 Host Backdrop 采样其它应用内容，并由 Win2D/Direct2D 在 GPU 上做高斯模糊；不采用 CPU 截图、浏览器套壳或 WebView；
 - 日常状态通过原生 `Button`、`RadioButton`、`ToggleButton`、`ProgressBar` 和 `ScrollViewer` 展示；
 - 以设备状态、降噪、均衡器和偏好设置为中心，不使用宣传页、仪表盘或多层伪玻璃卡片；
 - 软件启动和连接丢失时自动查找名称匹配 `YUANDAO` / `OriG` 的已配对耳机并尝试建立 SPP 控制会话。
@@ -51,7 +51,7 @@
 | ANC | 关闭、通透、普通降噪、深度降噪、试验、风噪抑制 |
 | EQ | 悔恨之泪、均衡中正、欧美澎湃、真律还原、游戏优化、细腻佳音、温婉人声 |
 | 快捷开关 | 游戏模式、低延迟、双设备连接、入耳检测、抗风噪 |
-| 桌面体验 | WPF + DWM Mica 中文 Fluent 界面、系统窗口圆角、自绘标题栏、托盘 ANC 快捷切换、任务栏电池进度、单文件 EXE |
+| 桌面体验 | WPF + Windows Composition Host Backdrop/Win2D GPU Blur 中文 Fluent 界面、无额外外框的原生窗口、自绘标题栏、托盘 ANC 快捷切换、任务栏电池进度、单文件 EXE |
 | 工程工具 | GATT/SPP 探测、协议验证、会话记录（调试版保留） |
 
 ## 安装与运行
@@ -144,7 +144,7 @@ src/
 ├── YuandaoTws.Application/     连接、状态、控制服务
 ├── YuandaoTws.Infrastructure/  WinRT 蓝牙与 SPP 实现
 ├── YuandaoTws.App/             调试/协议探测界面
-└── YuandaoTws.Desktop/         中文 Fluent 生产版界面（WPF + DWM Mica）
+└── YuandaoTws.Desktop/         中文 Fluent 生产版界面（WPF + Windows Composition）
 
 tests/
 └── YuandaoTws.Domain.Tests/    协议与领域单元测试
@@ -168,7 +168,7 @@ docs/
 ## 已知限制
 
 - 目前主要面向原道 OriG in「原点」及同协议族设备
-- 当前生产版采用 WPF + DWM Mica；它不是 WinUI 3 的 `DesktopAcrylicController` 实现，系统透明效果和视觉表现会随 Windows 版本/设置降级
+- 当前生产版采用 WPF + 原生 Windows Composition Host Backdrop/Win2D GPU Blur（Win10 1703+）；不可用时回退到系统 Acrylic，不使用 WinUI 3、WebView 或浏览器套壳
 - codec 切换属于实验能力，可能导致短暂断音或重新连接
 - 充电盒返回 0 时代表未知，不代表真实电量为 0%
 - 使用前必须完成 Windows 蓝牙配对

@@ -25,11 +25,9 @@ public sealed class YuandaoProtocol : IDeviceProtocol
         NiceHckOp.Battery when message.Payload.Length >= 3 => new HeadsetProtocolUpdate
         {
             Battery = BatteryInfo.FromLeftRight(
-                (byte)(message.Payload[0] & 0x7F),
-                (byte)(message.Payload[1] & 0x7F),
-                DecodeCaseBattery(message.Payload[2]),
-                (message.Payload[0] & 0x80) != 0,
-                (message.Payload[1] & 0x80) != 0),
+                DecodePercent(message.Payload[0]),
+                DecodePercent(message.Payload[1]),
+                DecodeCaseBattery(message.Payload[2])),
         },
         NiceHckOp.Version when message.Payload.Length >= 2 => new HeadsetProtocolUpdate
         {
@@ -102,7 +100,11 @@ public sealed class YuandaoProtocol : IDeviceProtocol
 
     public byte[] BuildQueryCommand(ushort opCode) => NiceHckCommands.Build(opCode);
 
-    private static byte? DecodeCaseBattery(byte raw) => raw == 0 ? null : (byte)(raw & 0x7F);
+    // 两个公开实现都把 0x0005 的三个 payload 字节直接当作百分比，未定义 bit7 充电语义。
+    // 充电状态不从主控电量帧推断；超过 100 的值也不展示为伪造的百分比。
+    private static byte? DecodeCaseBattery(byte raw) => raw is 0 or > 100 ? null : raw;
+
+    private static byte? DecodePercent(byte raw) => raw <= 100 ? raw : null;
 
     private static NoiseCancellingMode DecodeAncMode(byte raw) => raw switch
     {

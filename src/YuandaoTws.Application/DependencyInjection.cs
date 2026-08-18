@@ -10,6 +10,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<HeadsetConnectionService>();
         services.AddSingleton<HeadsetControlService>();
+        services.AddSingleton<YuandaoChargingMonitorService>();
         services.AddSingleton<BatteryMonitorService>();
         services.AddSingleton<NoiseCancellingService>();
         services.AddSingleton<ProtocolProbeService>();

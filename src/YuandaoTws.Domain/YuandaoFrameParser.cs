@@ -1,4 +1,5 @@
 using System.Text;
+using YuandaoTws.Domain.Models;
 
 namespace YuandaoTws.Domain;
 
@@ -6,7 +7,7 @@ namespace YuandaoTws.Domain;
 /// 原道「原点」变体帧（实测推断格式）：<c>03 | Id(1) | 00 | Len(1) | Payload</c>，
 /// 总包长 = 4 + Len。实测基线帧（docs/protocol/yuandao-origin.md §3.12）：
 /// <c>03 01 00 03 44 18 D8</c>、<c>03 02 00 06 6C A9 CC 75 1E A4</c>、<c>03 03 00 03 64 64 64</c>。
-/// 与 NiceHCK 协议（4E 头 6 字节）同族不同变体；id=03 帧 payload [L,R,Case] 疑似电量。
+/// 与 NiceHCK 协议（4E 头 6 字节）同族不同变体；id=03 帧 payload [L,R,Case] 为设备状态/电量候选字段。
 /// 本类型为纯逻辑（可单测），不涉及任何蓝牙 API。
 /// </summary>
 public sealed record YuandaoMessage
@@ -95,29 +96,51 @@ public static class YuandaoCommands
     public static byte[] Query(byte id) => [Magic, id, 0x00, 0x00];
 }
 
-/// <summary>原道变体帧语义解码（基于实测推帧的推断，置信度标注在文案中）。</summary>
+/// <summary>原道变体帧语义解码（仅使用已被实测确认的字段，不猜测充电状态）。</summary>
 public static class YuandaoFrameSemantics
 {
+    /// <summary>
+    /// 解析原道状态服务的 id=03 三字节状态帧。
+    /// 当前实测仅能确认三个字节可作为 [左耳、右耳、耳机盒] 的候选电量值，
+    /// 且 0xFF 会在耳机离盒时出现。USB 插拔前后帧完全一致，因此不能把 bit7 当作充电标志。
+    /// </summary>
+    public static BatteryInfo? TryParseBattery(YuandaoMessage message)
+    {
+        if (message.Id != 0x03 || message.Payload.Length != 3)
+        {
+            return null;
+        }
+
+        var left = DecodePercent(message.Payload[0]);
+        var right = DecodePercent(message.Payload[1]);
+        var casePercent = DecodePercent(message.Payload[2]);
+        return BatteryInfo.FromLeftRight(
+            left,
+            right,
+            casePercent);
+    }
+
     /// <summary>把一条帧翻译为可读摘要；无法识别时返回 null。</summary>
     public static string? Describe(YuandaoMessage message)
     {
         var payload = message.Payload;
         return message.Id switch
         {
-            // id=03：3 字节 [L,R,Case]，实测 64 64 64 = 100/100/100、E4 E4 64 = 充电中 100%（docs/protocol/yuandao-origin.md §3.12 / verify 日志）。
+            // id=03：3 字节 [L,R,Case]。当前协议没有被确认的充电字段；0xFF 视为未知。
             0x03 when payload.Length == 3 =>
-                $"电量（疑似）：左 {BatteryText(payload[0])} 右 {BatteryText(payload[1])} 盒 {(payload[2] == 0 ? "未知" : BatteryText(payload[2]))}",
+                $"状态电量（未含充电标志）：左 {BatteryText(payload[0])} 右 {BatteryText(payload[1])} 盒 {BatteryText(payload[2])}",
             0x02 => "设备标识（疑似）：" + string.Join(" ", payload.Select(b => b.ToString("X2"))),
             _ => null,
         };
     }
 
-    /// <summary>电量字节解码：bit7 = 充电中标志，低 7 位为电量百分比（实测 E4 &amp; 0x7F = 100）。</summary>
+    /// <summary>仅接受 0–100 的直接百分比；其它值（例如耳机离盒时的 0xFF）按未知处理。</summary>
     private static string BatteryText(byte value)
     {
-        var percent = value & 0x7F;
-        return (value & 0x80) != 0 ? $"{percent}%(充电中)" : $"{percent}%";
+        return DecodePercent(value) is { } percent ? $"{percent}%" : "未知";
     }
+
+    private static byte? DecodePercent(byte value) => value <= 100 ? value : null;
 
     /// <summary>一帧的完整 hex + 语义摘要。</summary>
     public static string FormatFrame(YuandaoMessage message)

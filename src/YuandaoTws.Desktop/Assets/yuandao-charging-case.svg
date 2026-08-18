@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 750 595" width="750" height="595">
+  <title>Yuandao charging case floating animation</title>
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0 0;0 -8;0 0" dur="3s" repeatCount="indefinite" />
+    <animateTransform attributeName="transform" type="rotate" values="-1.5 375 297;1.5 375 297;-1.5 375 297" dur="4.4s" repeatCount="indefinite" additive="sum" />
+    <image x="0" y="0" width="750" height="595" preserveAspectRatio="xMidYMid meet" href="yuandao-charging-case.png" xlink:href="yuandao-charging-case.png" />
+  </g>
+</svg>

@@ -11,6 +11,9 @@ namespace YuandaoTws.Application.Services;
 /// </summary>
 public sealed class HeadsetConnectionService : IDisposable
 {
+    // 原道「原点」状态服务：连接时主动推送 03 头状态帧；当前未确认充电字段。
+    private static readonly Guid YuandaoStatusServiceUuid = new("df21fe2c-2515-4fdb-8886-f12c4d67927c");
+
     private readonly IBluetoothDeviceScanner _scanner;
     private readonly IGattConnectionFactory _gattConnectionFactory;
     private readonly ISppConnectionFactory _sppConnectionFactory;
@@ -22,6 +25,7 @@ public sealed class HeadsetConnectionService : IDisposable
 
     private IDisposable? _scanSubscription;
     private ISppDeviceSession? _controlSession;
+    private ISppDeviceSession? _statusSession;
     private IGattDeviceSession? _gattSession;
     private HeadsetDevice? _lastDevice;
     private CancellationTokenSource? _reconnectCts;
@@ -55,6 +59,7 @@ public sealed class HeadsetConnectionService : IDisposable
     public long ConnectionGeneration => Interlocked.Read(ref _connectionGeneration);
 
     public event Action<ISppDeviceSession?, long>? ControlSessionChanged;
+    public event Action<ISppDeviceSession?>? StatusSessionChanged;
     public event Action<IGattDeviceSession?>? SessionChanged;
 
     public async Task StartScanAsync(CancellationToken cancellationToken)
@@ -113,6 +118,22 @@ public sealed class HeadsetConnectionService : IDisposable
         ControlSessionChanged?.Invoke(control, generation);
         _logger.LogInformation("SPP 控制会话已建立：{Device} / {Service}", device.Name, _protocol.ServiceUuid);
 
+        // 该状态服务不是控制通道，打开失败不能影响主界面连接和 ANC/EQ 功能。
+        try
+        {
+            _statusSession = await _sppConnectionFactory.OpenAsync(device, YuandaoStatusServiceUuid, cancellationToken);
+            StatusSessionChanged?.Invoke(_statusSession);
+            _logger.LogInformation("原道状态会话已建立：{Device} / {Service}", device.Name, YuandaoStatusServiceUuid);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation(ex, "未建立原道充电状态会话，继续使用主控 SPP：{Device}", device.Name);
+        }
+
         // GATT 失败不影响正式控制；仅作为探测窗口和标准电量诊断的可选能力。
         try
         {
@@ -134,6 +155,14 @@ public sealed class HeadsetConnectionService : IDisposable
         {
             control.ConnectionLost -= OnControlConnectionLost;
             await control.DisposeAsync();
+        }
+
+        var status = _statusSession;
+        _statusSession = null;
+        StatusSessionChanged?.Invoke(null);
+        if (status is not null)
+        {
+            await status.DisposeAsync();
         }
 
         var gatt = _gattSession;
@@ -167,7 +196,21 @@ public sealed class HeadsetConnectionService : IDisposable
         var generation = Interlocked.Increment(ref _connectionGeneration);
         ControlSessionChanged?.Invoke(null, generation);
         SetState(HeadsetConnectionState.Reconnecting);
+        // 控制流断开时同步释放辅助状态/GATT 会话，避免重连期间旧状态继续覆盖新连接。
+        _ = ReleaseAfterControlLossAsync();
         StartReconnectLoop();
+    }
+
+    private async Task ReleaseAfterControlLossAsync()
+    {
+        try
+        {
+            await ReleaseSessionsAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "释放断开的辅助会话失败");
+        }
     }
 
     private void StartReconnectLoop()

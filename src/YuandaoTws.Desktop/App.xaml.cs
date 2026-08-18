@@ -25,10 +25,12 @@ public partial class App : System.Windows.Application
         collection.AddSingleton<DashboardViewModel>();
         collection.AddSingleton<Services.WindowBackdropService>();
         collection.AddSingleton<MainWindow>();
+        collection.AddSingleton<Services.ConnectionToastService>();
         collection.AddSingleton<Services.TrayIconService>();
         collection.AddSingleton<Services.TaskbarOverlayService>();
         _services = collection.BuildServiceProvider();
         var mainWindow = _services.GetRequiredService<MainWindow>();
+        _ = _services.GetRequiredService<Services.ConnectionToastService>();
         _ = _services.GetRequiredService<Services.TrayIconService>();
         _ = _services.GetRequiredService<Services.TaskbarOverlayService>();
         mainWindow.Show();

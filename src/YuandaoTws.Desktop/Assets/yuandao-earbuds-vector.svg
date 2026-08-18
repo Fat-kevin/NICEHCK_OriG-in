@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" fill="none">
+  <title>Yuandao earbuds vector floating animation</title>
+  <defs>
+    <linearGradient id="caseMetal" x1="170" y1="150" x2="620" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC" />
+      <stop offset="0.42" stop-color="#C8D0D8" />
+      <stop offset="0.72" stop-color="#EEF2F5" />
+      <stop offset="1" stop-color="#8E9BA7" />
+    </linearGradient>
+    <linearGradient id="caseTop" x1="210" y1="150" x2="570" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" />
+      <stop offset="0.6" stop-color="#D9E0E6" />
+      <stop offset="1" stop-color="#A2AFBA" />
+    </linearGradient>
+    <linearGradient id="budMetal" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F4F7F9" />
+      <stop offset="0.48" stop-color="#B9C3CC" />
+      <stop offset="1" stop-color="#7C8995" />
+    </linearGradient>
+    <radialGradient id="groundGlow" cx="0" cy="0" r="1" gradientTransform="translate(400 670) rotate(90) scale(36 205)">
+      <stop stop-color="#287FD3" stop-opacity="0.30" />
+      <stop offset="1" stop-color="#287FD3" stop-opacity="0" />
+    </radialGradient>
+    <filter id="softShadow" x="-40%" y="-60%" width="180%" height="220%">
+      <feGaussianBlur stdDeviation="14" />
+    </filter>
+    <filter id="productShadow" x="-25%" y="-25%" width="150%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="13" flood-color="#30485C" flood-opacity="0.24" />
+    </filter>
+  </defs>
+
+  <ellipse cx="400" cy="666" rx="204" ry="34" fill="url(#groundGlow)" filter="url(#softShadow)">
+    <animate attributeName="opacity" values="0.44;0.18;0.44" dur="3.2s" repeatCount="indefinite" />
+    <animateTransform attributeName="transform" type="scale" values="1 1;0.82 0.82;1 1" dur="3.2s" repeatCount="indefinite" />
+  </ellipse>
+
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0 0;0 -13;0 0" dur="2.8s" repeatCount="indefinite" />
+    <animateTransform attributeName="transform" type="rotate" values="-2 400 390;2 400 390;-2 400 390" dur="4.2s" repeatCount="indefinite" additive="sum" />
+
+    <g filter="url(#productShadow)">
+      <!-- Closed charging case -->
+      <rect x="166" y="126" width="468" height="418" rx="94" fill="url(#caseMetal)" stroke="#8B98A4" stroke-width="3" />
+      <path d="M168 304C168 208 212 132 300 127H500C588 132 632 208 632 304" fill="url(#caseTop)" opacity="0.78" />
+      <path d="M171 307H629" stroke="#7D8994" stroke-opacity="0.72" stroke-width="3" />
+      <path d="M332 299C332 286 343 276 356 276H444C457 276 468 286 468 299V311C468 321 460 329 450 329H350C340 329 332 321 332 311V299Z" fill="#CFD7DE" stroke="#929EA8" stroke-width="2" />
+      <path d="M213 183C250 150 303 144 355 143" stroke="#FFFFFF" stroke-opacity="0.68" stroke-width="12" stroke-linecap="round" />
+      <text x="400" y="466" text-anchor="middle" fill="#65737F" font-family="Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="2">YUANDAO</text>
+
+      <!-- Left earbud -->
+      <g transform="translate(142 472) rotate(-24)">
+        <path d="M0 28C0 5 18 -13 41 -13H143C167 -13 187 6 187 30C187 54 168 73 144 73H42C18 73 0 54 0 28Z" fill="url(#budMetal)" stroke="#87949F" stroke-width="3" />
+        <path d="M129 73H194V228C194 250 176 268 154 268C132 268 114 250 114 228V88C114 80 120 73 129 73Z" fill="url(#budMetal)" stroke="#87949F" stroke-width="3" />
+        <ellipse cx="42" cy="29" rx="17" ry="14" fill="#6B7782" />
+        <ellipse cx="42" cy="29" rx="8" ry="7" fill="#202B35" />
+        <circle cx="161" cy="110" r="6" fill="#3E4B56" />
+        <circle cx="161" cy="144" r="6" fill="#3E4B56" />
+      </g>
+
+      <!-- Right earbud -->
+      <g transform="translate(473 474) rotate(21)">
+        <path d="M0 28C0 5 18 -13 41 -13H143C167 -13 187 6 187 30C187 54 168 73 144 73H42C18 73 0 54 0 28Z" fill="url(#budMetal)" stroke="#87949F" stroke-width="3" />
+        <path d="M129 73H194V228C194 250 176 268 154 268C132 268 114 250 114 228V88C114 80 120 73 129 73Z" fill="url(#budMetal)" stroke="#87949F" stroke-width="3" />
+        <ellipse cx="42" cy="29" rx="17" ry="14" fill="#6B7782" />
+        <ellipse cx="42" cy="29" rx="8" ry="7" fill="#202B35" />
+        <circle cx="161" cy="110" r="6" fill="#3E4B56" />
+        <circle cx="161" cy="144" r="6" fill="#3E4B56" />
+      </g>
+    </g>
+  </g>
+</svg>

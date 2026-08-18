@@ -34,15 +34,15 @@ public class YuandaoProtocolTests
     }
 
     [Fact]
-    public void 真机电量帧解析独立电量和充电标志()
+    public void 主控4E电量帧按公开协议直接解析三个百分比()
     {
-        var update = Create().TryParse(new NiceHckMessage { OpCode = NiceHckOp.Battery, Payload = [0xE4, 0xE4, 0x64] });
+        var update = Create().TryParse(new NiceHckMessage { OpCode = NiceHckOp.Battery, Payload = [0x64, 0x5A, 0x32] });
 
         update!.Battery!.LeftEarPercent.Should().Be(100);
-        update.Battery.RightEarPercent.Should().Be(100);
-        update.Battery.CasePercent.Should().Be(100);
-        update.Battery.IsLeftEarCharging.Should().BeTrue();
-        update.Battery.IsRightEarCharging.Should().BeTrue();
+        update.Battery.RightEarPercent.Should().Be(90);
+        update.Battery.CasePercent.Should().Be(50);
+        update.Battery.IsLeftEarCharging.Should().BeNull();
+        update.Battery.IsRightEarCharging.Should().BeNull();
     }
 
     [Fact]

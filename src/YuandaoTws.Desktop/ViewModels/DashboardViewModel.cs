@@ -22,9 +22,14 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly IDisposable _controlSubscription;
     private readonly IDisposable _deviceSubscription;
     private readonly IDisposable _stateSubscription;
+    private readonly IDisposable _chargingSubscription;
     private long _lastAttachedGeneration = -1;
     private bool _autoConnectionInProgress;
     private string? _connectedDeviceName;
+    private bool _hasAuxiliaryBatteryState;
+    private bool _leftCharging;
+    private bool _rightCharging;
+    private bool _caseCharging;
 
     /// <summary>降噪分段选择器绑定源（当前模式）。</summary>
     [ObservableProperty] private NoiseCancellingMode _ancMode = NoiseCancellingMode.Unknown;
@@ -40,8 +45,17 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _leftBatteryText = "—";
     [ObservableProperty] private string _rightBatteryText = "—";
     [ObservableProperty] private string _caseBatteryText = "—";
+    [ObservableProperty] private bool _casePresent;
     [ObservableProperty] private string _leftChargeText = "";
     [ObservableProperty] private string _rightChargeText = "";
+    [ObservableProperty] private string _caseChargeText = "";
+    [ObservableProperty] private string _leftChargingStatusText = "充电状态未知";
+    [ObservableProperty] private string _rightChargingStatusText = "充电状态未知";
+    [ObservableProperty] private string _caseChargingStatusText = "充电状态未知";
+    [ObservableProperty] private SolidColorBrush _leftChargingStatusBrush = MutedBrush();
+    [ObservableProperty] private SolidColorBrush _rightChargingStatusBrush = MutedBrush();
+    [ObservableProperty] private SolidColorBrush _caseChargingStatusBrush = MutedBrush();
+    [ObservableProperty] private string _chargingStatusText = "充电状态待同步";
     [ObservableProperty] private double _leftBatteryValue;
     [ObservableProperty] private double _rightBatteryValue;
     [ObservableProperty] private double _caseBatteryValue;
@@ -52,6 +66,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _inEarEnabled;
     [ObservableProperty] private bool _windSuppressionEnabled;
     [ObservableProperty] private string _ancDetailText = "尚未连接耳机";
+    [ObservableProperty] private string _ancStatusText = "降噪状态未知";
     [ObservableProperty] private string _equalizerDetailText = "尚未连接耳机";
     [ObservableProperty] private string _connectionSubText = "正在自动查找原点耳机…";
     [ObservableProperty] private SolidColorBrush _connectionDotBrush = new(System.Windows.Media.Color.FromRgb(0xA6, 0xAC, 0xB4));
@@ -59,7 +74,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     public DashboardViewModel(
         HeadsetConnectionService connection,
         HeadsetControlService control,
-        NoiseCancellingService anc)
+        NoiseCancellingService anc,
+        YuandaoChargingMonitorService chargingMonitor)
     {
         _connection = connection;
         _control = control;
@@ -70,6 +86,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _stateSubscription = connection.StateChanged
             .ObserveOn(System.Reactive.Concurrency.DispatcherScheduler.Current)
             .Subscribe(ApplyConnectionState);
+        _chargingSubscription = chargingMonitor.BatteryChanged
+            .ObserveOn(System.Reactive.Concurrency.DispatcherScheduler.Current)
+            .Subscribe(ApplyAuxiliaryBattery);
         _deviceSubscription = connection.DevicesDiscovered
             .ObserveOn(System.Reactive.Concurrency.DispatcherScheduler.Current)
             .Subscribe(OnDeviceDiscovered);
@@ -190,9 +209,41 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x16, 0xA3, 0x4A))
             : new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xA6, 0xAC, 0xB4));
 
+        ConnectionSubText = state switch
+        {
+            HeadsetConnectionState.Connected => "设备已连接，正在同步状态…",
+            HeadsetConnectionState.Connecting => "正在建立蓝牙连接…",
+            HeadsetConnectionState.Reconnecting => "连接中断，正在重新连接…",
+            _ => "正在自动查找原点耳机…",
+        };
+
         if (state == HeadsetConnectionState.Disconnected)
         {
-            ConnectionSubText = "连接已断开，正在自动查找原点耳机…";
+            // 充电图标只代表当前这次协议上报；断开后不能保留上一次会话的状态。
+            LeftChargeText = "";
+            RightChargeText = "";
+            CaseChargeText = "";
+            _hasAuxiliaryBatteryState = false;
+            _leftCharging = false;
+            _rightCharging = false;
+            _caseCharging = false;
+            ChargingStatusText = "未连接";
+            UpdateChargeIndicators();
+            DeviceName = "未连接耳机";
+            DeviceSubText = "等待连接…";
+            FirmwareText = "—";
+            LeftBatteryText = "—";
+            RightBatteryText = "—";
+            CaseBatteryText = "—";
+            CasePresent = false;
+            LeftBatteryValue = 0;
+            RightBatteryValue = 0;
+            CaseBatteryValue = 0;
+            AncMode = NoiseCancellingMode.Unknown;
+            Equalizer = EqualizerPreset.Unknown;
+            AncDetailText = "尚未连接耳机";
+            AncStatusText = "降噪状态未知";
+            EqualizerDetailText = "尚未连接耳机";
             _ = StartAutoConnectionAsync();
         }
     }
@@ -202,9 +253,19 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         DeviceName = string.IsNullOrEmpty(_connectedDeviceName) ? "原道 OriG in「原点」" : _connectedDeviceName;
         DeviceSubText = state.Firmware is { } firmware ? $"固件 {firmware}" : "固件 —";
         FirmwareText = state.Firmware?.ToString() ?? "—";
+        if (IsConnected && state.Firmware is not null)
+        {
+            ConnectionSubText = "设备已连接，状态已同步。";
+        }
         AncMode = state.AncMode ?? NoiseCancellingMode.Unknown;
         Equalizer = state.Equalizer ?? EqualizerPreset.Unknown;
         AncDetailText = Describe(state.AncMode);
+        AncStatusText = state.AncMode switch
+        {
+            NoiseCancellingMode.Off => "降噪已关闭",
+            NoiseCancellingMode.Unknown or null => "降噪状态未知",
+            _ => $"降噪已开启 · {Describe(state.AncMode)}",
+        };
         EqualizerDetailText = Describe(state.Equalizer);
         GameModeEnabled = state.GameModeEnabled == true;
         LowLatencyEnabled = state.LowLatencyEnabled == true;
@@ -222,12 +283,66 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         LeftBatteryText = FormatPercent(battery.LeftEarPercent);
         RightBatteryText = FormatPercent(battery.RightEarPercent);
         CaseBatteryText = FormatPercent(battery.CasePercent);
+        CasePresent = battery.CasePercent.HasValue;
         LeftBatteryValue = battery.LeftEarPercent ?? 0;
         RightBatteryValue = battery.RightEarPercent ?? 0;
         CaseBatteryValue = battery.CasePercent ?? 0;
-        LeftChargeText = battery.IsLeftEarCharging == true ? "充电中" : "";
-        RightChargeText = battery.IsRightEarCharging == true ? "充电中" : "";
+        // 主控 4E 帧没有在两个公开实现中定义充电字段；若状态服务已提供真实值，不能被 4E 查询覆盖。
+        if (!_hasAuxiliaryBatteryState)
+        {
+            if (battery.IsLeftEarCharging is { } left) _leftCharging = left;
+            if (battery.IsRightEarCharging is { } right) _rightCharging = right;
+            if (battery.IsCaseCharging is { } chargingCase) _caseCharging = chargingCase;
+            UpdateChargeIndicators();
+        }
     }
+
+    /// <summary>状态服务的 03 帧补充充电标志；当前原道协议没有确认该字段时保持未知。</summary>
+    private void ApplyAuxiliaryBattery(BatteryInfo battery)
+    {
+        var hasChargingFlags = battery.IsLeftEarCharging.HasValue
+            || battery.IsRightEarCharging.HasValue
+            || battery.IsCaseCharging.HasValue;
+        if (!hasChargingFlags)
+        {
+            _hasAuxiliaryBatteryState = false;
+            _leftCharging = false;
+            _rightCharging = false;
+            _caseCharging = false;
+            UpdateChargeIndicators();
+            ChargingStatusText = "充电状态未知";
+            return;
+        }
+
+        _hasAuxiliaryBatteryState = true;
+        if (battery.IsLeftEarCharging is { } left) _leftCharging = left;
+        if (battery.IsRightEarCharging is { } right) _rightCharging = right;
+        if (battery.IsCaseCharging is { } chargingCase) _caseCharging = chargingCase;
+        UpdateChargeIndicators();
+        ChargingStatusText = _leftCharging || _rightCharging || _caseCharging ? "正在充电" : "未在充电";
+    }
+
+    private void UpdateChargeIndicators()
+    {
+        LeftChargeText = _leftCharging ? "⚡" : "";
+        RightChargeText = _rightCharging ? "⚡" : "";
+        CaseChargeText = _caseCharging ? "⚡" : "";
+        LeftChargingStatusText = FormatChargingStatus(_hasAuxiliaryBatteryState, _leftCharging);
+        RightChargingStatusText = FormatChargingStatus(_hasAuxiliaryBatteryState, _rightCharging);
+        CaseChargingStatusText = FormatChargingStatus(_hasAuxiliaryBatteryState, _caseCharging);
+        LeftChargingStatusBrush = ChargingBrush(_hasAuxiliaryBatteryState, _leftCharging);
+        RightChargingStatusBrush = ChargingBrush(_hasAuxiliaryBatteryState, _rightCharging);
+        CaseChargingStatusBrush = ChargingBrush(_hasAuxiliaryBatteryState, _caseCharging);
+    }
+
+    private static string FormatChargingStatus(bool hasStatus, bool charging) =>
+        !hasStatus ? "充电状态未知" : charging ? "充电中" : "未在充电";
+
+    private static SolidColorBrush ChargingBrush(bool hasStatus, bool charging) =>
+        charging ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x16, 0xA3, 0x4A)) : MutedBrush();
+
+    private static SolidColorBrush MutedBrush() =>
+        new(System.Windows.Media.Color.FromRgb(0x7D, 0x8D, 0xA1));
 
     /// <summary>降噪分段选择触发：应用目标模式，随后状态流回查确认。</summary>
     [RelayCommand]
@@ -370,5 +485,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _controlSubscription.Dispose();
         _deviceSubscription.Dispose();
         _stateSubscription.Dispose();
+        _chargingSubscription.Dispose();
     }
 }
