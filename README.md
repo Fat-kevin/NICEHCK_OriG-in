@@ -53,14 +53,14 @@
 
 | 文件 | 适合谁 |
 | --- | --- |
-| `YuandaoTws-Setup-v0.1.4.exe` | 推荐。完整安装版，支持开始菜单、快捷方式、开机启动和卸载 |
-| `YuandaoTws-Desktop-v0.1.4-win-x64-portable.zip` | 便携版，解压后直接运行，不写入安装目录 |
+| `YuandaoTws-Setup-v0.1.5.exe` | 推荐。完整安装版，支持开始菜单、快捷方式、开机启动和卸载 |
+| `YuandaoTws-Desktop-v0.1.5-win-x64-portable.zip` | 便携版，解压后直接运行，不写入安装目录 |
 | `SHA256SUMS.txt` | 用于校验下载文件完整性 |
 
 ### 安装
 
 1. 在 Windows 蓝牙设置中先完成耳机配对。
-2. 下载并运行 `YuandaoTws-Setup-v0.1.4.exe`。
+2. 下载并运行 `YuandaoTws-Setup-v0.1.5.exe`。
 3. 从开始菜单或桌面快捷方式打开“原点耳机控制”。
 4. 需要时在右侧设置中打开“开机启动”。
 

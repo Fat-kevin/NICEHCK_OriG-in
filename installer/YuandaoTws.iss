@@ -1,8 +1,8 @@
 #define AppName "原点耳机控制"
-#define AppVersion "0.1.4"
+#define AppVersion "0.1.5"
 #define AppPublisher "NICEHCK OriG-in"
 #define AppExeName "YuandaoTws.Desktop.exe"
-#define PublishDir "..\artifacts\release-v0.1.4\desktop-standalone"
+#define PublishDir "..\artifacts\release-v0.1.5\desktop-standalone"
 
 [Setup]
 AppId={{B8D9D9E2-3A40-4B55-9D1A-8F1A1B4E0A11}
@@ -15,7 +15,7 @@ AppUpdatesURL=https://github.com/Fat-kevin/NICEHCK_OriG-in/releases
 DefaultDirName={autopf}\YuandaoTws
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
-OutputDir=..\artifacts\release-v0.1.4
+OutputDir=..\artifacts\release-v0.1.5
 OutputBaseFilename=YuandaoTws-Setup-v{#AppVersion}
 SetupIconFile=..\src\YuandaoTws.Desktop\Assets\app.ico
 UninstallDisplayIcon={app}\{#AppExeName}
