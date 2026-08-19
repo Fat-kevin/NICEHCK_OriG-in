@@ -125,14 +125,14 @@ public sealed class HeadsetConnectionService : IDisposable
 
         _controlSession = control;
         control.ConnectionLost += OnControlConnectionLost;
-        ControlSessionChanged?.Invoke(control, generation);
+        RaiseControlSessionChanged(control, generation);
         _logger.LogInformation("SPP 控制会话已建立：{Device} / {Service}", device.Name, _protocol.ServiceUuid);
 
         // 该状态服务不是控制通道，打开失败不能影响主界面连接和 ANC/EQ 功能。
         try
         {
             _statusSession = await _sppConnectionFactory.OpenAsync(device, YuandaoStatusServiceUuid, cancellationToken);
-            StatusSessionChanged?.Invoke(_statusSession);
+            RaiseStatusSessionChanged(_statusSession);
             _logger.LogInformation("原道状态会话已建立：{Device} / {Service}", device.Name, YuandaoStatusServiceUuid);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -148,7 +148,11 @@ public sealed class HeadsetConnectionService : IDisposable
         try
         {
             _gattSession = await _gattConnectionFactory.ConnectAsync(device, cancellationToken);
-            SessionChanged?.Invoke(_gattSession);
+            RaiseSessionChanged(_gattSession);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -164,39 +168,51 @@ public sealed class HeadsetConnectionService : IDisposable
         if (control is not null)
         {
             control.ConnectionLost -= OnControlConnectionLost;
-            await control.DisposeAsync();
+            RaiseControlSessionChanged(null, generation);
+            await DisposeSppSessionSafelyAsync(control, "控制");
         }
 
         var status = _statusSession;
         _statusSession = null;
-        StatusSessionChanged?.Invoke(null);
+        RaiseStatusSessionChanged(null);
         if (status is not null)
         {
-            await status.DisposeAsync();
+            await DisposeSppSessionSafelyAsync(status, "状态");
         }
 
         var gatt = _gattSession;
         _gattSession = null;
         if (gatt is not null)
         {
-            await gatt.DisposeAsync();
+            await DisposeGattSessionSafelyAsync(gatt);
         }
 
-        ControlSessionChanged?.Invoke(null, generation);
-        SessionChanged?.Invoke(null);
+        RaiseSessionChanged(null);
     }
 
     private void OnDeviceDiscovered(HeadsetDevice device)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         if (_devices.TryAdd(device.DeviceId, device))
         {
-            _devicesDiscovered.OnNext(device);
+            try
+            {
+                _devicesDiscovered.OnNext(device);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "发布设备发现通知失败：{Device}", device.Name);
+            }
         }
     }
 
     private void OnControlConnectionLost()
     {
-        if (_controlSession is null || _lastDevice is null)
+        if (Volatile.Read(ref _disposed) != 0 || _controlSession is null || _lastDevice is null)
         {
             return;
         }
@@ -204,7 +220,7 @@ public sealed class HeadsetConnectionService : IDisposable
         _logger.LogWarning("SPP 控制连接丢失：{DeviceName}，启动自动重连", _lastDevice.Name);
         _controlSession = null;
         var generation = Interlocked.Increment(ref _connectionGeneration);
-        ControlSessionChanged?.Invoke(null, generation);
+        RaiseControlSessionChanged(null, generation);
         SetState(HeadsetConnectionState.Reconnecting);
         // 控制流断开时同步释放辅助状态/GATT 会话，避免重连期间旧状态继续覆盖新连接。
         _ = ReleaseAfterControlLossAsync();
@@ -231,53 +247,81 @@ public sealed class HeadsetConnectionService : IDisposable
         }
 
         CancelReconnect();
-        _reconnectCts = new CancellationTokenSource();
-        _ = Task.Run(() => ReconnectLoopAsync(_reconnectCts.Token));
+        var reconnectCts = new CancellationTokenSource();
+        _reconnectCts = reconnectCts;
+        _ = ReconnectLoopAsync(reconnectCts);
     }
 
-    private async Task ReconnectLoopAsync(CancellationToken cancellationToken)
+    private async Task ReconnectLoopAsync(CancellationTokenSource reconnectCts)
     {
         var device = _lastDevice;
         if (device is null)
         {
+            reconnectCts.Dispose();
             return;
         }
 
-        while (!cancellationToken.IsCancellationRequested && Volatile.Read(ref _disposed) == 0)
+        try
         {
-            try
+            while (!reconnectCts.IsCancellationRequested && Volatile.Read(ref _disposed) == 0)
             {
-                var delay = TimeSpan.FromSeconds(Math.Min(1 << Math.Min(_reconnectAttempt, 5), 30));
-                await Task.Delay(delay, cancellationToken);
-                await OpenSessionsAsync(device, cancellationToken);
-                _reconnectAttempt = 0;
-                SetState(HeadsetConnectionState.Connected);
-                return;
+                try
+                {
+                    var delay = TimeSpan.FromSeconds(Math.Min(1 << Math.Min(_reconnectAttempt, 5), 30));
+                    await Task.Delay(delay, reconnectCts.Token);
+                    await OpenSessionsAsync(device, reconnectCts.Token);
+                    _reconnectAttempt = 0;
+                    SetState(HeadsetConnectionState.Connected);
+                    return;
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _reconnectAttempt++;
+                    _logger.LogWarning(ex, "SPP 重连 {DeviceName} 失败（第 {Attempt} 次）", device.Name, _reconnectAttempt);
+                    try
+                    {
+                        await ReleaseSessionsAsync();
+                    }
+                    catch (Exception releaseException)
+                    {
+                        _logger.LogDebug(releaseException, "重连失败后释放会话失败");
+                    }
+                }
             }
-            catch (OperationCanceledException)
+        }
+        finally
+        {
+            if (ReferenceEquals(_reconnectCts, reconnectCts))
             {
-                return;
+                _reconnectCts = null;
             }
-            catch (Exception ex)
-            {
-                _reconnectAttempt++;
-                _logger.LogWarning(ex, "SPP 重连 {DeviceName} 失败（第 {Attempt} 次）", device.Name, _reconnectAttempt);
-                await ReleaseSessionsAsync();
-            }
+
+            reconnectCts.Dispose();
         }
     }
 
     private void CancelReconnect()
     {
-        _reconnectCts?.Cancel();
-        _reconnectCts?.Dispose();
+        var reconnectCts = _reconnectCts;
         _reconnectCts = null;
+        reconnectCts?.Cancel();
     }
 
     private void SetState(HeadsetConnectionState state)
     {
         State = state;
-        _stateChanged.OnNext(state);
+        try
+        {
+            _stateChanged.OnNext(state);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "发布蓝牙连接状态失败：{State}", state);
+        }
     }
 
     private void StopScanSubscription()
@@ -295,9 +339,104 @@ public sealed class HeadsetConnectionService : IDisposable
 
         StopScanSubscription();
         CancelReconnect();
-        // 取消重连并立即启动所有 WinRT 会话的异步释放，避免退出后继续持有蓝牙句柄。
-        _ = ReleaseSessionsAsync();
+        _ = StopScannerSafelyAsync();
+        // 取消重连并启动所有 WinRT 会话的异步释放，避免退出后继续持有蓝牙句柄。
+        _ = ReleaseSessionsSafelyAsync();
         _devicesDiscovered.Dispose();
         _stateChanged.Dispose();
+    }
+
+    private async Task ReleaseSessionsSafelyAsync()
+    {
+        try
+        {
+            await ReleaseSessionsAsync();
+        }
+        catch (Exception ex)
+        {
+            // 退出阶段不能把异步释放异常升级成未观察任务异常。
+            _logger.LogDebug(ex, "退出时释放蓝牙会话失败");
+        }
+    }
+
+    private async Task StopScannerSafelyAsync()
+    {
+        try
+        {
+            await _scanner.StopScanAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "退出时停止蓝牙扫描失败");
+        }
+    }
+
+    private async Task DisposeSppSessionSafelyAsync(ISppDeviceSession session, string role)
+    {
+        try
+        {
+            await session.DisposeAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "释放{Role} SPP 会话失败", role);
+        }
+    }
+
+    private async Task DisposeGattSessionSafelyAsync(IGattDeviceSession session)
+    {
+        try
+        {
+            await session.DisposeAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "释放 GATT 会话失败");
+        }
+    }
+
+    private void RaiseControlSessionChanged(ISppDeviceSession? session, long generation)
+    {
+        foreach (var handler in ControlSessionChanged?.GetInvocationList() ?? [])
+        {
+            try
+            {
+                ((Action<ISppDeviceSession?, long>)handler)(session, generation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "处理控制会话变化通知失败");
+            }
+        }
+    }
+
+    private void RaiseStatusSessionChanged(ISppDeviceSession? session)
+    {
+        foreach (var handler in StatusSessionChanged?.GetInvocationList() ?? [])
+        {
+            try
+            {
+                ((Action<ISppDeviceSession?>)handler)(session);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "处理状态会话变化通知失败");
+            }
+        }
+    }
+
+    private void RaiseSessionChanged(IGattDeviceSession? session)
+    {
+        foreach (var handler in SessionChanged?.GetInvocationList() ?? [])
+        {
+            try
+            {
+                ((Action<IGattDeviceSession?>)handler)(session);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "处理 GATT 会话变化通知失败");
+            }
+        }
     }
 }

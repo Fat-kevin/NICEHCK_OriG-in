@@ -326,7 +326,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             StatusText = "全自动协议试探进行中（约 1 分钟）。请戴上耳机，留意降噪/通透是否随试探变化…";
             var report = await _autoProbe.RunAutoProbeAsync(CancellationToken.None);
 
-            var probeDirectory = @"E:\Project\Bluetooth\probe";
+            var probeDirectory = GetProbeDirectory();
             Directory.CreateDirectory(probeDirectory);
             var filePath = Path.Combine(probeDirectory, $"autoprobe-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
             await File.WriteAllTextAsync(filePath, report);
@@ -625,7 +625,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             StatusText = "观察模式进行中（30 秒）。请戴上耳机，长按触控来回切换降噪/通透/关闭…";
             var report = await _autoProbe.ObserveStateAsync(CancellationToken.None);
 
-            var probeDirectory = @"E:\Project\Bluetooth\probe";
+            var probeDirectory = GetProbeDirectory();
             Directory.CreateDirectory(probeDirectory);
             var filePath = Path.Combine(probeDirectory, $"observe-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
             await File.WriteAllTextAsync(filePath, report);
@@ -642,6 +642,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
             CanConnect = true;
         }
     }
+
+    private static string GetProbeDirectory() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "YuandaoTws",
+        "probe");
 
     public void Dispose()
     {

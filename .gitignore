@@ -3,6 +3,9 @@
 .vs/
 *.user
 *.suo
-probe/*.txt
+probe/**/*.txt
+probe/**/*.log
+probe/**/*.csv
+*.dmp
 logs/
 artifacts/

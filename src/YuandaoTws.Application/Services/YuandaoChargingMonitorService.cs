@@ -1,4 +1,5 @@
 using System.Reactive.Subjects;
+using Microsoft.Extensions.Logging;
 using YuandaoTws.Domain;
 using YuandaoTws.Domain.Abstractions;
 using YuandaoTws.Domain.Models;
@@ -13,15 +14,19 @@ namespace YuandaoTws.Application.Services;
 public sealed class YuandaoChargingMonitorService : IDisposable
 {
     private readonly HeadsetConnectionService _connection;
+    private readonly ILogger<YuandaoChargingMonitorService> _logger;
     private readonly Subject<BatteryInfo> _batteryChanged = new();
     private IDisposable? _dataSubscription;
     private IDisposable? _controlDataSubscription;
     private CancellationTokenSource? _pollCts;
-    private Task? _pollTask;
+    private int _disposed;
 
-    public YuandaoChargingMonitorService(HeadsetConnectionService connection)
+    public YuandaoChargingMonitorService(
+        HeadsetConnectionService connection,
+        ILogger<YuandaoChargingMonitorService> logger)
     {
         _connection = connection;
+        _logger = logger;
         _connection.StatusSessionChanged += OnStatusSessionChanged;
         _connection.ControlSessionChanged += OnControlSessionChanged;
     }
@@ -30,8 +35,12 @@ public sealed class YuandaoChargingMonitorService : IDisposable
 
     private void OnStatusSessionChanged(ISppDeviceSession? session)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         _pollCts?.Cancel();
-        _pollCts?.Dispose();
         _pollCts = null;
         _dataSubscription?.Dispose();
         _dataSubscription = null;
@@ -39,7 +48,7 @@ public sealed class YuandaoChargingMonitorService : IDisposable
         if (session is null)
         {
             // 清掉上一条状态，避免辅助会话重开期间继续显示旧的“充电中”。
-            _batteryChanged.OnNext(BatteryInfo.FromLeftRight(null, null, null));
+            Publish(BatteryInfo.FromLeftRight(null, null, null));
             return;
         }
 
@@ -47,12 +56,18 @@ public sealed class YuandaoChargingMonitorService : IDisposable
 
         // df21 服务通常会主动推送，但部分固件只在打开后收到查询才会再发一次。
         // 查询失败不影响主控通道；轮询仅用于取得状态快照，不代表能够得到充电状态。
-        _pollCts = new CancellationTokenSource();
-        _pollTask = PollStatusAsync(session, _pollCts.Token);
+        var pollCts = new CancellationTokenSource();
+        _pollCts = pollCts;
+        _ = PollStatusAsync(session, pollCts);
     }
 
     private void OnControlSessionChanged(ISppDeviceSession? session, long generation)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         _controlDataSubscription?.Dispose();
         _controlDataSubscription = session is null ? null : SubscribeYuandaoFrames(session);
     }
@@ -62,44 +77,81 @@ public sealed class YuandaoChargingMonitorService : IDisposable
         var parser = new YuandaoFrameParser();
         return session.DataReceived.Subscribe(chunk =>
         {
-            foreach (var message in parser.Feed(chunk.Value))
+            try
             {
-                var battery = YuandaoFrameSemantics.TryParseBattery(message);
-                if (battery is not null)
+                foreach (var message in parser.Feed(chunk.Value))
                 {
-                    _batteryChanged.OnNext(battery);
+                    var battery = YuandaoFrameSemantics.TryParseBattery(message);
+                    if (battery is not null)
+                    {
+                        Publish(battery);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // 辅助状态帧异常不能反向终止 SPP 读循环。
+                _logger.LogDebug(ex, "解析原道辅助状态帧失败");
             }
         });
     }
 
-    private static async Task PollStatusAsync(ISppDeviceSession session, CancellationToken cancellationToken)
+    private async Task PollStatusAsync(ISppDeviceSession session, CancellationTokenSource pollCts)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            try
+            while (!pollCts.IsCancellationRequested)
             {
-                await session.WriteAsync(YuandaoCommands.Query(0x03), cancellationToken);
-                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+                try
+                {
+                    await session.WriteAsync(YuandaoCommands.Query(0x03), pollCts.Token);
+                    await Task.Delay(TimeSpan.FromSeconds(10), pollCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    // 辅助服务不稳定时静默退出，不能影响主控连接和界面。
+                    _logger.LogDebug(ex, "原道辅助状态轮询结束");
+                    return;
+                }
             }
-            catch (OperationCanceledException)
+        }
+        finally
+        {
+            if (ReferenceEquals(_pollCts, pollCts))
             {
-                return;
+                _pollCts = null;
             }
-            catch
-            {
-                // 辅助服务不稳定时静默退出，不能影响主控连接和界面。
-                return;
-            }
+
+            pollCts.Dispose();
+        }
+    }
+
+    private void Publish(BatteryInfo battery)
+    {
+        try
+        {
+            _batteryChanged.OnNext(battery);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "发布原道辅助电量状态失败");
         }
     }
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         _connection.StatusSessionChanged -= OnStatusSessionChanged;
         _connection.ControlSessionChanged -= OnControlSessionChanged;
         _pollCts?.Cancel();
-        _pollCts?.Dispose();
         _pollCts = null;
         _dataSubscription?.Dispose();
         _dataSubscription = null;

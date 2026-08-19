@@ -18,7 +18,10 @@ public partial class VerifyViewModel : ObservableObject
     private readonly ProtocolVerifyService _verify;
     private readonly ILogger<VerifyViewModel> _logger;
     private const int MaxPhaseLog = 500;
-    private const string ProbeDirectory = @"E:\Project\Bluetooth\probe";
+    private static string ProbeDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "YuandaoTws",
+        "probe");
 
     /// <summary>校验运行期间的实时日志写入器（从开始即落盘，成功/失败都保存完整过程）。</summary>
     private StreamWriter? _logWriter;

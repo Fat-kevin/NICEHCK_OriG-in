@@ -26,7 +26,10 @@ public partial class SppProbeViewModel : ObservableObject, IDisposable
     private readonly ILogger<SppProbeViewModel> _logger;
     private IDisposable? _dataSubscription;
     private const int MaxStreamLog = 500;
-    private const string ProbeDirectory = @"E:\Project\Bluetooth\probe";
+    private static string ProbeDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "YuandaoTws",
+        "probe");
 
     // 会话记录：WRITE/RECV/标记全部按时间追加到 probe\spp-session-*.txt。
     private readonly object _sessionLock = new();

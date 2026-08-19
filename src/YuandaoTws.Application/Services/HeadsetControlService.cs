@@ -19,10 +19,12 @@ public sealed class HeadsetControlService : IDisposable
     private readonly SemaphoreSlim _commandLock = new(1, 1);
     private IDisposable? _dataSubscription;
     private CancellationTokenSource? _sessionCts;
+    private Task? _batteryPollingTask;
     private NiceHckFrameParser? _parser;
     private ISppDeviceSession? _session;
     private TaskCompletionSource<NiceHckMessage>? _pendingResponse;
     private ushort? _pendingOpCode;
+    private int _disposed;
 
     public HeadsetControlService(IDeviceProtocol protocol, ILogger<HeadsetControlService> logger)
     {
@@ -36,28 +38,54 @@ public sealed class HeadsetControlService : IDisposable
 
     public async Task AttachAsync(ISppDeviceSession session, long generation, CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         await DetachAsync();
         _session = session;
         _parser = new NiceHckFrameParser();
         _sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _dataSubscription = session.DataReceived.Subscribe(chunk => ProcessChunk(chunk.Value));
+        _dataSubscription = session.DataReceived.Subscribe(chunk =>
+        {
+            try
+            {
+                ProcessChunk(chunk.Value);
+            }
+            catch (Exception ex)
+            {
+                // 协议解析或观察者异常不能反向终止 SPP 读循环。
+                _logger.LogError(ex, "处理 SPP 控制数据失败");
+            }
+        });
         await RefreshAsync(_sessionCts.Token);
         StartBatteryPolling(generation, _sessionCts.Token);
     }
 
-    public Task DetachAsync()
+    public async Task DetachAsync()
     {
-        _sessionCts?.Cancel();
-        _sessionCts?.Dispose();
+        var sessionCts = _sessionCts;
+        sessionCts?.Cancel();
         _sessionCts = null;
         _dataSubscription?.Dispose();
         _dataSubscription = null;
+        var pollingTask = _batteryPollingTask;
+        _batteryPollingTask = null;
+        if (pollingTask is not null)
+        {
+            try
+            {
+                await pollingTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "等待电量轮询结束失败");
+            }
+        }
+
+        sessionCts?.Dispose();
         _parser = null;
         _session = null;
         FailPending(new BluetoothConnectionException("SPP 控制会话已失效。"));
         State = new();
-        _stateChanged.OnNext(State);
-        return Task.CompletedTask;
+        PublishState(State);
     }
 
     public async Task RefreshAsync(CancellationToken cancellationToken)
@@ -90,7 +118,7 @@ public sealed class HeadsetControlService : IDisposable
         {
             await RequireSession().WriteAsync(_protocol.BuildCodecCommand(codec, State.Firmware), cancellationToken);
             State = State with { LastRequestedCodec = codec, UpdatedAt = DateTimeOffset.Now };
-            _stateChanged.OnNext(State);
+            PublishState(State);
         }
         finally { _commandLock.Release(); }
     }
@@ -168,16 +196,18 @@ public sealed class HeadsetControlService : IDisposable
                 _ => state,
             };
         State = state;
-        _stateChanged.OnNext(State);
+        PublishState(State);
     }
 
-    private void StartBatteryPolling(long generation, CancellationToken cancellationToken) => _ = Task.Run(async () =>
+    private void StartBatteryPolling(long generation, CancellationToken cancellationToken) => _batteryPollingTask = BatteryPollingAsync(generation, cancellationToken);
+
+    private async Task BatteryPollingAsync(long generation, CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
         try { while (await timer.WaitForNextTickAsync(cancellationToken)) await QueryAsync(NiceHckOp.Battery, cancellationToken); }
         catch (OperationCanceledException) { }
         catch (Exception ex) { _logger.LogDebug(ex, "SPP 电量轮询结束（会话 {Generation}）", generation); }
-    }, cancellationToken);
+    }
 
     private static ushort QueryOp(HeadsetToggleFeature feature) => feature switch
     {
@@ -191,5 +221,43 @@ public sealed class HeadsetControlService : IDisposable
 
     private ISppDeviceSession RequireSession() => _session ?? throw new BluetoothConnectionException("尚未建立 SPP 控制会话。");
     private void FailPending(Exception exception) => _pendingResponse?.TrySetException(exception);
-    public void Dispose() { _ = DetachAsync(); _commandLock.Dispose(); _stateChanged.Dispose(); }
+
+    private void PublishState(HeadsetControlState state)
+    {
+        try
+        {
+            _stateChanged.OnNext(state);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "发布耳机控制状态失败");
+        }
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        _ = DisposeCoreAsync();
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        try
+        {
+            await DetachAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "释放 SPP 控制服务失败");
+        }
+        finally
+        {
+            _commandLock.Dispose();
+            _stateChanged.Dispose();
+        }
+    }
 }

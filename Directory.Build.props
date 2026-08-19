@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(IsTestProject)' != 'true'">
+    <!-- Release 产物不携带调试符号；需要诊断时使用 Debug 构建或单独保留符号归档。 -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <CopyOutputSymbolsToOutputDirectory>false</CopyOutputSymbolsToOutputDirectory>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+  </PropertyGroup>
+</Project>

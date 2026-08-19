@@ -25,6 +25,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly IDisposable _deviceSubscription;
     private readonly IDisposable _stateSubscription;
     private readonly IDisposable _chargingSubscription;
+    private readonly CancellationTokenSource _lifetimeCts = new();
     private long _lastAttachedGeneration = -1;
     private bool _autoConnectionInProgress;
     private string? _connectedDeviceName;
@@ -32,6 +33,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private bool _leftCharging;
     private bool _rightCharging;
     private bool _caseCharging;
+    private int _disposed;
 
     /// <summary>降噪分段选择器绑定源（当前模式）。</summary>
     [ObservableProperty] private NoiseCancellingMode _ancMode = NoiseCancellingMode.Unknown;
@@ -103,10 +105,19 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>仅在断线重连时使用；启动时由 <see cref="StartAutoConnectionAsync"/> 统一触发。</summary>
-    public Task ForceReconnectAsync() => StartAutoConnectionAsync();
+    public Task ForceReconnectAsync()
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        return StartAutoConnectionAsync();
+    }
 
     private async Task StartAutoConnectionAsync()
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         if (_autoConnectionInProgress)
         {
             return;
@@ -123,8 +134,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         {
             IsSearching = true;
             ConnectionSubText = "正在自动查找原点耳机…";
-            await _connection.StartScanAsync(CancellationToken.None);
+            await _connection.StartScanAsync(_lifetimeCts.Token);
             ConnectionSubText = "已发现目标，正在建立连接…";
+        }
+        catch (OperationCanceledException) when (_lifetimeCts.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -138,6 +152,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void OnDeviceDiscovered(HeadsetDevice device)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         if (!IsYuandaoDevice(device))
         {
             return;
@@ -149,6 +168,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private async Task ConnectDiscoveredDeviceAsync(HeadsetDevice device)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         if (IsConnected || _connection.State is HeadsetConnectionState.Connecting or HeadsetConnectionState.Reconnecting)
         {
             return;
@@ -157,13 +181,16 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         try
         {
             _connectedDeviceName = device.Name;
-            await _connection.ConnectAsync(device, CancellationToken.None);
+            await _connection.ConnectAsync(device, _lifetimeCts.Token);
+        }
+        catch (OperationCanceledException) when (_lifetimeCts.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
             ConnectionSubText = $"自动连接失败：{ex.Message}";
             // 失败后稍作等待，让后续广播继续触发重试，避免高频抖动。
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await Task.Delay(TimeSpan.FromSeconds(3), _lifetimeCts.Token);
         }
     }
 
@@ -173,6 +200,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void OnControlSessionChanged(ISppDeviceSession? session, long generation)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         _ = AttachControlSessionAsync(session, generation);
     }
 
@@ -192,7 +224,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             }
 
             _lastAttachedGeneration = generation;
-            await _control.AttachAsync(session, generation, CancellationToken.None);
+            await _control.AttachAsync(session, generation, _lifetimeCts.Token);
+        }
+        catch (OperationCanceledException) when (_lifetimeCts.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -202,6 +237,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void ApplyConnectionState(HeadsetConnectionState state)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         IsConnected = state == HeadsetConnectionState.Connected;
         IsSearching = state is HeadsetConnectionState.Connecting or HeadsetConnectionState.Reconnecting;
         StatusText = state switch
@@ -256,6 +296,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void ApplyState(HeadsetControlState state)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         DeviceName = string.IsNullOrEmpty(_connectedDeviceName) ? "原道 OriG in「原点」" : _connectedDeviceName;
         DeviceSubText = state.Firmware is { } firmware ? $"固件 {firmware}" : "固件 —";
         FirmwareText = state.Firmware?.ToString() ?? "—";
@@ -306,6 +351,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     /// <summary>状态服务的 03 帧补充充电标志；当前原道协议没有确认该字段时保持未知。</summary>
     private void ApplyAuxiliaryBattery(BatteryInfo battery)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         var hasChargingFlags = battery.IsLeftEarCharging.HasValue
             || battery.IsRightEarCharging.HasValue
             || battery.IsCaseCharging.HasValue;
@@ -508,10 +558,17 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        _lifetimeCts.Cancel();
         _connection.ControlSessionChanged -= OnControlSessionChanged;
         _controlSubscription.Dispose();
         _deviceSubscription.Dispose();
         _stateSubscription.Dispose();
         _chargingSubscription.Dispose();
+        _lifetimeCts.Dispose();
     }
 }

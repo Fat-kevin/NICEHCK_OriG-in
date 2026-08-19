@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
+using Microsoft.Extensions.Logging;
 using YuandaoTws.Application.Services;
 using YuandaoTws.Desktop.ViewModels;
 using YuandaoTws.Domain.Enums;
@@ -37,6 +38,7 @@ public sealed class TrayIconService : IDisposable
     private readonly DashboardViewModel _viewModel;
     private readonly MainWindow _mainWindow;
     private readonly NoiseCancellingService _anc;
+    private readonly ILogger<TrayIconService> _logger;
     private readonly ContextMenu _contextMenu = new();
     private readonly Dictionary<NoiseCancellingMode, MenuItem> _ancItems = new();
     private readonly IDisposable _ancSubscription;
@@ -47,14 +49,19 @@ public sealed class TrayIconService : IDisposable
     private bool _disposed;
     private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
 
-    public TrayIconService(DashboardViewModel viewModel, MainWindow mainWindow, NoiseCancellingService anc)
+    public TrayIconService(
+        DashboardViewModel viewModel,
+        MainWindow mainWindow,
+        NoiseCancellingService anc,
+        ILogger<TrayIconService> logger)
     {
         _viewModel = viewModel;
         _mainWindow = mainWindow;
         _anc = anc;
+        _logger = logger;
         AddAncSubmenu();
         AddMenuItem("打开控制面板", (_, _) => ShowMainWindow());
-        AddMenuItem("重新连接耳机", async (_, _) => await _viewModel.ForceReconnectAsync());
+        AddMenuItem("重新连接耳机", ReconnectFromTray);
         AddMenuItem("退出", (_, _) => System.Windows.Application.Current.Shutdown());
 
         _mainWindow.SourceInitialized += OnSourceInitialized;
@@ -62,6 +69,18 @@ public sealed class TrayIconService : IDisposable
         _ancSubscription = anc.ModeChanged
             .ObserveOn(System.Reactive.Concurrency.DispatcherScheduler.Current)
             .Subscribe(UpdateAncCheckmarks);
+    }
+
+    private async void ReconnectFromTray(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _viewModel.ForceReconnectAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "从通知区域发起重连失败");
+        }
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)

@@ -23,6 +23,7 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
     private readonly HashSet<ulong> _seenAddresses = new();
     private DeviceWatcher? _watcher;
     private BluetoothLEAdvertisementWatcher? _adWatcher;
+    private int _disposed;
 
     public IObservable<HeadsetDevice> DevicesDiscovered => _devices;
 
@@ -33,6 +34,7 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
 
     public async Task StartScanAsync(CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         cancellationToken.ThrowIfCancellationRequested();
         StopScan();
 
@@ -47,7 +49,7 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
             {
                 if (TryCreateDevice(info, out var device))
                 {
-                    _devices.OnNext(device);
+                    PublishDevice(device);
                     knownCount++;
                 }
             }
@@ -88,8 +90,9 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
                     continue;
                 }
 
+                using var classicDeviceLifetime = classicDevice;
                 var mac = FormatAddress(classicDevice.BluetoothAddress);
-                var leDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(classicDevice.BluetoothAddress);
+                using var leDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(classicDevice.BluetoothAddress);
                 if (leDevice is null)
                 {
                     _logger.LogDebug("经典设备 {Name}（{Mac}）当前未暴露 BLE 身份", info.Name, mac);
@@ -98,7 +101,7 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
 
                 var name = string.IsNullOrWhiteSpace(leDevice.Name) ? info.Name : leDevice.Name;
                 _logger.LogInformation("经典设备 {Name}（{Mac}）解析出 BLE 控制通道：{LeName}", info.Name, mac, name);
-                _devices.OnNext(new HeadsetDevice
+                PublishDevice(new HeadsetDevice
                 {
                     Name = name,
                     DeviceId = leDevice.DeviceId,
@@ -183,10 +186,15 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
 
     private void OnDeviceAdded(DeviceWatcher sender, DeviceInformation info)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         _logger.LogDebug("BLE 枚举器发现设备：{Name}（{Id}）", info.Name, info.Id);
         if (TryCreateDevice(info, out var device))
         {
-            _devices.OnNext(device);
+            PublishDevice(device);
         }
     }
 
@@ -196,6 +204,11 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
     {
         try
         {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
             // 跳过无名字的广播，避免列表被无名信标刷屏。
             var advertisedName = args.Advertisement.LocalName;
             if (string.IsNullOrWhiteSpace(advertisedName))
@@ -211,8 +224,8 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
                 }
             }
 
-            var leDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress);
-            if (leDevice is null)
+            using var leDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress);
+            if (leDevice is null || Volatile.Read(ref _disposed) != 0)
             {
                 _logger.LogDebug("广播发现 {Name}（{Mac}）但无法创建 BLE 设备", advertisedName, FormatAddress(args.BluetoothAddress));
                 return;
@@ -221,7 +234,7 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
             var name = string.IsNullOrWhiteSpace(leDevice.Name) ? advertisedName : leDevice.Name;
             var mac = FormatAddress(args.BluetoothAddress);
             _logger.LogInformation("BLE 广告发现设备：{Name}（{Mac}）", name, mac);
-            _devices.OnNext(new HeadsetDevice
+            PublishDevice(new HeadsetDevice
             {
                 Name = name,
                 DeviceId = leDevice.DeviceId,
@@ -236,24 +249,26 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
         }
     }
 
-    private void OnDeviceUpdated(DeviceWatcher sender, DeviceInformationUpdate update)
+    private async void OnDeviceUpdated(DeviceWatcher sender, DeviceInformationUpdate update)
     {
-        // 设备属性更新后可能补齐「可连接」标记或名字，尝试重新加入（上层按 DeviceId 去重）。
-        _ = Task.Run(async () =>
+        if (Volatile.Read(ref _disposed) != 0)
         {
-            try
+            return;
+        }
+
+        // 设备属性更新后可能补齐「可连接」标记或名字，尝试重新加入（上层按 DeviceId 去重）。
+        try
+        {
+            var info = await DeviceInformation.CreateFromIdAsync(update.Id);
+            if (info is not null && Volatile.Read(ref _disposed) == 0 && TryCreateDevice(info, out var device))
             {
-                var info = await DeviceInformation.CreateFromIdAsync(update.Id);
-                if (info is not null && TryCreateDevice(info, out var device))
-                {
-                    _devices.OnNext(device);
-                }
+                PublishDevice(device);
             }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "处理设备更新失败：{Id}", update.Id);
-            }
-        });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "处理设备更新失败：{Id}", update.Id);
+        }
     }
 
     private void OnEnumerationCompleted(DeviceWatcher sender, object args)
@@ -302,4 +317,34 @@ public sealed class BluetoothDeviceScanner : IBluetoothDeviceScanner
     }
 
     private static string FormatAddress(ulong address) => BluetoothAddressFormatter.Format(address);
+
+    private void PublishDevice(HeadsetDevice device)
+    {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _devices.OnNext(device);
+        }
+        catch (Exception ex)
+        {
+            // 发现通知是可选的观察者回调，不能让一个 UI 订阅者中断 WinRT 扫描事件。
+            _logger.LogError(ex, "发布蓝牙设备发现通知失败：{Device}", device.Name);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        StopScan();
+        _devices.OnCompleted();
+        _devices.Dispose();
+    }
 }

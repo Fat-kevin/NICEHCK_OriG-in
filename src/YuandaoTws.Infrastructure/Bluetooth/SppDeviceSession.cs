@@ -57,9 +57,11 @@ public sealed class SppDeviceSession : ISppDeviceSession
 
     public async Task WriteAsync(byte[] data, CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         await _writeLock.WaitAsync(cancellationToken);
         try
         {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
             // 复用会话级 DataWriter（写锁保证 StoreAsync 串行）。
             _writer.WriteBytes(data);
             await _writer.StoreAsync().AsTask(cancellationToken);
@@ -93,7 +95,15 @@ public sealed class SppDeviceSession : ISppDeviceSession
 
                 var buffer = new byte[loaded];
                 reader.ReadBytes(buffer);
-                _data.OnNext(new SppDataReceived { Value = buffer });
+                try
+                {
+                    _data.OnNext(new SppDataReceived { Value = buffer });
+                }
+                catch (Exception ex)
+                {
+                    // 观察者异常不能被误判为蓝牙链路断开。
+                    _logger.LogError(ex, "处理 SPP 数据通知失败：{Device}", Device.Name);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -114,7 +124,15 @@ public sealed class SppDeviceSession : ISppDeviceSession
             if (!cancellationToken.IsCancellationRequested)
             {
                 _logger.LogWarning("SPP 会话断开：{Device}", Device.Name);
-                ConnectionLost?.Invoke();
+                try
+                {
+                    ConnectionLost?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    // 上层重连回调不能让读循环变成未观察的故障任务。
+                    _logger.LogDebug(ex, "处理 SPP 断线回调失败：{Device}", Device.Name);
+                }
             }
         }
     }
@@ -126,10 +144,20 @@ public sealed class SppDeviceSession : ISppDeviceSession
             return;
         }
 
-        // 先取消标记，再释放 socket 解阻塞在读循环里的 LoadAsync，最后等循环退出。
-        _readCts.Cancel();
-        _writer.Dispose();
-        _socket.Dispose();
+        // 等待正在进行的写入完成，再释放 writer/socket，避免退出与 StoreAsync 并发。
+        await _writeLock.WaitAsync();
+        try
+        {
+            // 先取消标记，再释放 socket 解阻塞在读循环里的 LoadAsync，最后等循环退出。
+            _readCts.Cancel();
+            _writer.Dispose();
+            _socket.Dispose();
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+
         try
         {
             await _readLoop;

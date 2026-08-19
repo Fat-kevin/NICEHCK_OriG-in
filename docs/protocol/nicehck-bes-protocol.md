@@ -1,6 +1,6 @@
 # NiceHCK 开源控制器协议参考文档（BES 白牌协议族）
 
-> 本文档整理自两个 GitHub 开源项目（位于 `E:\Project\YUANDAO\`），是**已解密的完整控制协议**，
+> 本文档整理自两个 GitHub 开源项目，是**已解密的完整控制协议**，
 > 对本项目原道「原点」耳机的协议逆向具有**决定性参考价值**。2026-08-14 整理。
 
 ---
@@ -143,7 +143,7 @@ Android 版完整刷新为 8 条：电量 → 100ms 降噪 → 200ms EQ → 300m
 
 ### 3.4 自动校验实测确认（2026-08-14 11:10，`probe\verify-20260814-111107.txt`）—— H1 成立
 
-「协议自动校验」窗口（ProtocolVerifyService）对 YUANDAO OriG in（18:5C:A1:52:50:BF）全自动实测：
+「协议自动校验」窗口（ProtocolVerifyService）对 YUANDAO OriG in（设备地址已脱敏）全自动实测：
 
 1. **`0000a100` 控制通道确认 + NiceHCK 格式确认**：
    - 连接即推：`4E 06 00 00 05 00 64 64 64` = 电量：左 100% 右 100% 盒 100%（NiceHCK 电量帧格式，op=0x0005）；
@@ -200,6 +200,6 @@ Android 版完整刷新为 8 条：电量 → 100ms 降噪 → 200ms EQ → 300m
 
 ## 5. 参考资料
 
-- 本项目文件：`E:\Project\YUANDAO\NiceHCK_Controller\`（Android）+ `E:\Project\YUANDAO\NiceHCK_Controller_Windows\`（Rust）
+- 参考项目：`NiceHCK_Controller`（Android）+ `NiceHCK_Controller_Windows`（Rust）
 - 原道实测记录：`docs/protocol/yuandao-origin.md` §3.11–3.13
 - 原道逆向接入点：`docs/交接文档.md` §7

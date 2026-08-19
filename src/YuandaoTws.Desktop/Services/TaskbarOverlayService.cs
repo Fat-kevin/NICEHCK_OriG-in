@@ -19,6 +19,7 @@ public sealed class TaskbarOverlayService : IDisposable
     private IntPtr _hwnd;
     private ITaskbarList3? _taskbar;
     private NativeTaskbarBatteryWindow? _batteryWindow;
+    private int _disposed;
 
     public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel, ILogger<TaskbarOverlayService> logger)
     {
@@ -31,6 +32,11 @@ public sealed class TaskbarOverlayService : IDisposable
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         _hwnd = new WindowInteropHelper(_window).Handle;
         if (_hwnd == IntPtr.Zero)
         {
@@ -40,11 +46,11 @@ public sealed class TaskbarOverlayService : IDisposable
         try
         {
             _taskbar = (ITaskbarList3)new CTaskbarList();
+            _taskbar.HrInit();
         }
-        catch (COMException)
+        catch (Exception ex)
         {
-            // 部分远程会话 / 精简环境没有任务栏 COM 对象，静默降级为无任务栏进度。
-            _taskbar = null;
+            DisableTaskbarOverlay(ex);
         }
 
         UpdateOverlay();
@@ -67,21 +73,37 @@ public sealed class TaskbarOverlayService : IDisposable
 
     private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DashboardViewModel.IsConnected)
-            or nameof(DashboardViewModel.IsSearching)
-            or nameof(DashboardViewModel.LeftBatteryText)
-            or nameof(DashboardViewModel.RightBatteryText)
-            or nameof(DashboardViewModel.CaseBatteryText)
-            or nameof(DashboardViewModel.LeftBatteryValue)
-            or nameof(DashboardViewModel.RightBatteryValue)
-            or nameof(DashboardViewModel.CaseBatteryValue))
+        if (Volatile.Read(ref _disposed) != 0)
         {
-            _batteryWindow?.UpdateStatus(
-                _viewModel.IsConnected,
-                _viewModel.IsSearching,
-                _viewModel.LeftBatteryValue,
-                _viewModel.RightBatteryValue);
-            UpdateOverlay();
+            return;
+        }
+
+        try
+        {
+            if (e.PropertyName is nameof(DashboardViewModel.IsConnected)
+                or nameof(DashboardViewModel.IsSearching)
+                or nameof(DashboardViewModel.LeftBatteryText)
+                or nameof(DashboardViewModel.RightBatteryText)
+                or nameof(DashboardViewModel.CaseBatteryText)
+                or nameof(DashboardViewModel.LeftBatteryValue)
+                or nameof(DashboardViewModel.RightBatteryValue)
+                or nameof(DashboardViewModel.CaseBatteryValue))
+            {
+                _batteryWindow?.UpdateStatus(
+                    _viewModel.IsConnected,
+                    _viewModel.IsSearching,
+                    _viewModel.LeftBatteryValue,
+                    _viewModel.RightBatteryValue);
+                UpdateOverlay();
+            }
+        }
+        catch (Exception ex)
+        {
+            // 任务栏是可选增强功能，任何 Explorer/COM 状态异常都不能影响主窗口和蓝牙连接。
+            _logger.LogWarning(ex, "任务栏状态更新失败，已停用任务栏增强功能");
+            DisableTaskbarOverlay(ex);
+            _batteryWindow?.Dispose();
+            _batteryWindow = null;
         }
     }
 
@@ -93,19 +115,55 @@ public sealed class TaskbarOverlayService : IDisposable
         }
 
         // 只读 VM 暴露的绑定源，不引入新状态：连接成功后才显示进度，断开/未知显示 0。
-        var percent = _viewModel.IsConnected ? ResolveBatteryPercent() : 0;
-        if (percent <= 0)
+        try
         {
-            _taskbar.SetProgressState(_hwnd, TbpFlag.NoProgress);
+            var percent = _viewModel.IsConnected ? ResolveBatteryPercent() : 0;
+            if (percent <= 0)
+            {
+                _taskbar.SetProgressState(_hwnd, TbpFlag.NoProgress);
+                return;
+            }
+
+            _taskbar.SetProgressState(_hwnd, TbpFlag.Normal);
+            _taskbar.SetProgressValue(_hwnd, (ulong)percent, 100);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "任务栏电量进度更新失败，已停用任务栏进度");
+            DisableTaskbarOverlay(ex);
+        }
+    }
+
+    private void DisableTaskbarOverlay(Exception exception)
+    {
+        if (_taskbar is null)
+        {
             return;
         }
 
-        _taskbar.SetProgressState(_hwnd, TbpFlag.Normal);
-        _taskbar.SetProgressValue(_hwnd, (ulong)percent, 100);
+        _logger.LogInformation(exception, "任务栏 COM 不可用，主界面将继续运行但不显示任务栏电量进度");
+        try
+        {
+            if (Marshal.IsComObject(_taskbar))
+            {
+                Marshal.FinalReleaseComObject(_taskbar);
+            }
+        }
+        catch (Exception releaseException)
+        {
+            _logger.LogDebug(releaseException, "释放任务栏 COM 对象失败");
+        }
+
+        _taskbar = null;
     }
 
     private void ShowMainWindow()
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         _window.Show();
         if (_window.WindowState == WindowState.Minimized)
         {
@@ -132,6 +190,11 @@ public sealed class TaskbarOverlayService : IDisposable
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         if (_hwnd != IntPtr.Zero && _taskbar is not null)
         {
             try
@@ -148,6 +211,10 @@ public sealed class TaskbarOverlayService : IDisposable
         _window.SourceInitialized -= OnSourceInitialized;
         _batteryWindow?.Dispose();
         _batteryWindow = null;
+        if (_taskbar is not null)
+        {
+            DisableTaskbarOverlay(new ObjectDisposedException(nameof(TaskbarOverlayService)));
+        }
     }
 
     // ---- ITaskbarList3 COM 定义（经典已知结构，Vtable 顺序必须保持） ----

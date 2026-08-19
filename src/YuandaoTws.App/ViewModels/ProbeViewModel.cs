@@ -28,7 +28,10 @@ public partial class ProbeViewModel : ObservableObject, IDisposable
     private readonly Dictionary<Guid, byte[]> _notifications = new();
     private IDisposable? _notificationSubscription;
     private const int MaxNotificationLog = 500;
-    private const string ProbeDirectory = @"E:\Project\Bluetooth\probe";
+    private static string ProbeDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "YuandaoTws",
+        "probe");
 
     // 会话记录：读/写/通知/标记全部按时间追加到 probe\session-*.txt。
     private readonly object _sessionLock = new();
@@ -245,7 +248,7 @@ public partial class ProbeViewModel : ObservableObject, IDisposable
             var report = GattReportFormatter.BuildReport(session.Device, services, _readValues, _notifications);
 
             // 报告导出到项目根下的 probe 目录（用户要求不放系统盘）。
-            var probeDirectory = @"E:\Project\Bluetooth\probe";
+            var probeDirectory = ProbeDirectory;
             Directory.CreateDirectory(probeDirectory);
             var filePath = Path.Combine(
                 probeDirectory,

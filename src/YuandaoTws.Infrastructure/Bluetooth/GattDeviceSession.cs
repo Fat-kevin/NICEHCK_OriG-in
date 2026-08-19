@@ -24,6 +24,7 @@ public sealed class GattDeviceSession : IGattDeviceSession
     private readonly HashSet<Guid> _subscribed = new();
     private readonly Dictionary<Guid, GattCharacteristic> _characteristicCache = new();
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
+    private int _disposed;
 
     public HeadsetDevice Device { get; }
 
@@ -167,6 +168,11 @@ public sealed class GattDeviceSession : IGattDeviceSession
 
     public ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return ValueTask.CompletedTask;
+        }
+
         foreach (var uuid in _subscribed.ToArray())
         {
             if (_characteristicCache.TryGetValue(uuid, out var characteristic))
