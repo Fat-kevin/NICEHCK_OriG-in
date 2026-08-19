@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -7,271 +6,142 @@ using YuandaoTws.Desktop.ViewModels;
 
 namespace YuandaoTws.Desktop.Services;
 
-/// <summary>
-/// 在任务栏图标上叠加耳机电池进度（ITaskbarList3.SetProgressValue / SetProgressState）。
-/// 电池来源取 ViewModel 中左耳优先、右耳次之、充电盒兜底；未连接时清除进度条。
-/// </summary>
+/// <summary>管理任务栏进度和可关闭的原生状态胶囊；不申请工作区、不抢焦点。</summary>
 public sealed class TaskbarOverlayService : IDisposable
 {
     private readonly MainWindow _window;
     private readonly DashboardViewModel _viewModel;
+    private readonly DesktopPreferencesService _preferences;
+    private readonly DesktopThemeService _theme;
     private readonly ILogger<TaskbarOverlayService> _logger;
     private IntPtr _hwnd;
     private ITaskbarList3? _taskbar;
     private NativeTaskbarBatteryWindow? _batteryWindow;
     private int _disposed;
 
-    public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel, ILogger<TaskbarOverlayService> logger)
+    public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel, DesktopPreferencesService preferences, DesktopThemeService theme, ILogger<TaskbarOverlayService> logger)
     {
-        _window = window;
-        _viewModel = viewModel;
-        _logger = logger;
+        _window = window; _viewModel = viewModel; _preferences = preferences; _theme = theme; _logger = logger;
         _window.SourceInitialized += OnSourceInitialized;
         _viewModel.PropertyChanged += OnViewModelChanged;
+        _preferences.PreferencesChanged += OnPreferencesChanged;
+        _theme.ThemeChanged += OnThemeChanged;
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            return;
-        }
-
+        if (Volatile.Read(ref _disposed) != 0) return;
         _hwnd = new WindowInteropHelper(_window).Handle;
-        if (_hwnd == IntPtr.Zero)
-        {
-            return;
-        }
-
-        try
-        {
-            _taskbar = (ITaskbarList3)new CTaskbarList();
-            _taskbar.HrInit();
-        }
-        catch (Exception ex)
-        {
-            DisableTaskbarOverlay(ex);
-        }
-
-        UpdateOverlay();
-        try
-        {
-            _batteryWindow = new NativeTaskbarBatteryWindow(ShowMainWindow, _window.Dispatcher);
-            _batteryWindow.Show(
-                _viewModel.IsConnected,
-                _viewModel.IsSearching,
-                _viewModel.LeftBatteryValue,
-                _viewModel.RightBatteryValue);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "原生任务栏电量控件初始化失败，将继续运行主界面和任务栏进度");
-            _batteryWindow?.Dispose();
-            _batteryWindow = null;
-        }
+        if (_hwnd == IntPtr.Zero) return;
+        try { _taskbar = (ITaskbarList3)(object)new CTaskbarList(); _taskbar.HrInit(); }
+        catch (Exception ex) { DisableTaskbarOverlay(ex); }
+        EnsureBatteryWindow(); UpdateBatteryWindow(); UpdateOverlay();
     }
 
     private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            return;
-        }
-
-        try
-        {
-            if (e.PropertyName is nameof(DashboardViewModel.IsConnected)
-                or nameof(DashboardViewModel.IsSearching)
-                or nameof(DashboardViewModel.LeftBatteryText)
-                or nameof(DashboardViewModel.RightBatteryText)
-                or nameof(DashboardViewModel.CaseBatteryText)
-                or nameof(DashboardViewModel.LeftBatteryValue)
-                or nameof(DashboardViewModel.RightBatteryValue)
-                or nameof(DashboardViewModel.CaseBatteryValue))
-            {
-                _batteryWindow?.UpdateStatus(
-                    _viewModel.IsConnected,
-                    _viewModel.IsSearching,
-                    _viewModel.LeftBatteryValue,
-                    _viewModel.RightBatteryValue);
-                UpdateOverlay();
-            }
-        }
-        catch (Exception ex)
-        {
-            // 任务栏是可选增强功能，任何 Explorer/COM 状态异常都不能影响主窗口和蓝牙连接。
-            _logger.LogWarning(ex, "任务栏状态更新失败，已停用任务栏增强功能");
-            DisableTaskbarOverlay(ex);
-            _batteryWindow?.Dispose();
-            _batteryWindow = null;
-        }
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (e.PropertyName is not (nameof(DashboardViewModel.IsConnected) or nameof(DashboardViewModel.IsSearching)
+            or nameof(DashboardViewModel.LeftBatteryValue) or nameof(DashboardViewModel.RightBatteryValue)
+            or nameof(DashboardViewModel.CaseBatteryValue) or nameof(DashboardViewModel.LeftChargeText)
+            or nameof(DashboardViewModel.RightChargeText) or nameof(DashboardViewModel.TaskbarWidgetEnabled)
+            or nameof(DashboardViewModel.BatteryAccentColor) or nameof(DashboardViewModel.ChargingColor))) return;
+        try { EnsureBatteryWindow(); UpdateBatteryWindow(); UpdateOverlay(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "任务栏状态更新失败，主界面继续运行"); }
     }
+
+    private void OnPreferencesChanged(object? sender, EventArgs e)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        _window.Dispatcher.InvokeAsync(() => { EnsureBatteryWindow(); UpdateBatteryWindow(); UpdateOverlay(); });
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e) => _batteryWindow?.UpdatePalette(BuildPalette());
+
+    private void EnsureBatteryWindow()
+    {
+        if (!_viewModel.TaskbarWidgetEnabled)
+        {
+            _batteryWindow?.Dispose(); _batteryWindow = null; ClearTaskbarProgress(); return;
+        }
+        if (_batteryWindow is null)
+        {
+            try { _batteryWindow = new NativeTaskbarBatteryWindow(ShowMainWindow, _window.Dispatcher, BuildPalette()); }
+            catch (Exception ex) { _logger.LogError(ex, "原生任务栏状态胶囊初始化失败"); _batteryWindow = null; }
+        }
+        else _batteryWindow.UpdatePalette(BuildPalette());
+    }
+
+    private void UpdateBatteryWindow()
+    {
+        if (_batteryWindow is null) return;
+        var leftCharging = !string.IsNullOrEmpty(_viewModel.LeftChargeText);
+        var rightCharging = !string.IsNullOrEmpty(_viewModel.RightChargeText);
+        _batteryWindow.UpdateStatus(_viewModel.IsConnected, _viewModel.IsSearching, _viewModel.LeftBatteryValue, _viewModel.RightBatteryValue, leftCharging, rightCharging);
+        _batteryWindow.Show(_viewModel.IsConnected, _viewModel.IsSearching, _viewModel.LeftBatteryValue, _viewModel.RightBatteryValue, leftCharging, rightCharging);
+    }
+
+    private NativeTaskbarPalette BuildPalette()
+    {
+        var preferences = _preferences.Current;
+        var accent = BatteryColorResolver.Parse(preferences.BatteryAccentColor, BatteryColorResolver.LowColor);
+        var charging = BatteryColorResolver.Parse(preferences.ChargingColor, BatteryColorResolver.LowColor);
+        return new NativeTaskbarPalette(ToDrawing(accent), ToDrawing(charging), _theme.IsDark);
+    }
+
+    private static System.Drawing.Color ToDrawing(System.Windows.Media.Color color) => System.Drawing.Color.FromArgb(color.A, color.R, color.G, color.B);
 
     private void UpdateOverlay()
     {
-        if (_hwnd == IntPtr.Zero || _taskbar is null)
-        {
-            return;
-        }
-
-        // 只读 VM 暴露的绑定源，不引入新状态：连接成功后才显示进度，断开/未知显示 0。
+        if (_hwnd == IntPtr.Zero || _taskbar is null) return;
         try
         {
+            if (!_viewModel.TaskbarWidgetEnabled) { ClearTaskbarProgress(); return; }
             var percent = _viewModel.IsConnected ? ResolveBatteryPercent() : 0;
-            if (percent <= 0)
-            {
-                _taskbar.SetProgressState(_hwnd, TbpFlag.NoProgress);
-                return;
-            }
+            if (percent <= 0) { _taskbar.SetProgressState(_hwnd, TbpFlag.NoProgress); return; }
+            _taskbar.SetProgressState(_hwnd, TbpFlag.Normal); _taskbar.SetProgressValue(_hwnd, (ulong)percent, 100);
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "任务栏电量进度更新失败"); DisableTaskbarOverlay(ex); }
+    }
 
-            _taskbar.SetProgressState(_hwnd, TbpFlag.Normal);
-            _taskbar.SetProgressValue(_hwnd, (ulong)percent, 100);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "任务栏电量进度更新失败，已停用任务栏进度");
-            DisableTaskbarOverlay(ex);
-        }
+    private void ClearTaskbarProgress()
+    {
+        if (_hwnd == IntPtr.Zero || _taskbar is null) return;
+        try { _taskbar.SetProgressState(_hwnd, TbpFlag.NoProgress); } catch (COMException) { }
     }
 
     private void DisableTaskbarOverlay(Exception exception)
     {
-        if (_taskbar is null)
+        _logger.LogInformation(exception, "任务栏 COM 不可用，继续运行原生状态胶囊");
+        if (_taskbar is not null && Marshal.IsComObject(_taskbar))
         {
-            return;
+            try { Marshal.FinalReleaseComObject(_taskbar); } catch (Exception ex) { _logger.LogDebug(ex, "释放任务栏 COM 失败"); }
         }
-
-        _logger.LogInformation(exception, "任务栏 COM 不可用，主界面将继续运行但不显示任务栏电量进度");
-        try
-        {
-            if (Marshal.IsComObject(_taskbar))
-            {
-                Marshal.FinalReleaseComObject(_taskbar);
-            }
-        }
-        catch (Exception releaseException)
-        {
-            _logger.LogDebug(releaseException, "释放任务栏 COM 对象失败");
-        }
-
         _taskbar = null;
     }
 
     private void ShowMainWindow()
     {
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            return;
-        }
-
-        _window.Show();
-        if (_window.WindowState == WindowState.Minimized)
-        {
-            _window.WindowState = WindowState.Normal;
-        }
-        _window.Activate();
+        if (Volatile.Read(ref _disposed) != 0) return;
+        _window.Dispatcher.InvokeAsync(() => { _window.Show(); if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal; _window.Activate(); });
     }
 
-    /// <summary>左耳优先，其次右耳，再充电盒；未知（0）时返回 0。</summary>
-    private double ResolveBatteryPercent()
-    {
-        if (_viewModel.LeftBatteryValue > 0)
-        {
-            return _viewModel.LeftBatteryValue;
-        }
-
-        if (_viewModel.RightBatteryValue > 0)
-        {
-            return _viewModel.RightBatteryValue;
-        }
-
-        return _viewModel.CaseBatteryValue > 0 ? _viewModel.CaseBatteryValue : 0;
-    }
+    private double ResolveBatteryPercent() => _viewModel.LeftBatteryValue > 0 ? _viewModel.LeftBatteryValue : _viewModel.RightBatteryValue > 0 ? _viewModel.RightBatteryValue : _viewModel.CaseBatteryValue;
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
-        {
-            return;
-        }
-
-        if (_hwnd != IntPtr.Zero && _taskbar is not null)
-        {
-            try
-            {
-                _taskbar.SetProgressState(_hwnd, TbpFlag.NoProgress);
-            }
-            catch (COMException)
-            {
-                // 窗口已销毁时忽略，不影响退出。
-            }
-        }
-
-        _viewModel.PropertyChanged -= OnViewModelChanged;
-        _window.SourceInitialized -= OnSourceInitialized;
-        _batteryWindow?.Dispose();
-        _batteryWindow = null;
-        if (_taskbar is not null)
-        {
-            DisableTaskbarOverlay(new ObjectDisposedException(nameof(TaskbarOverlayService)));
-        }
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+        ClearTaskbarProgress(); _viewModel.PropertyChanged -= OnViewModelChanged; _preferences.PreferencesChanged -= OnPreferencesChanged; _theme.ThemeChanged -= OnThemeChanged; _window.SourceInitialized -= OnSourceInitialized;
+        _batteryWindow?.Dispose(); _batteryWindow = null; if (_taskbar is not null) DisableTaskbarOverlay(new ObjectDisposedException(nameof(TaskbarOverlayService)));
     }
 
-    // ---- ITaskbarList3 COM 定义（经典已知结构，Vtable 顺序必须保持） ----
-
-    [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList
+    [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)] private interface ITaskbarList { void HrInit(); void AddTab(IntPtr hwnd); void DeleteTab(IntPtr hwnd); void ActivateTab(IntPtr hwnd); void SetActiveAlt(IntPtr hwnd); }
+    [ComImport, Guid("602D4995-B13A-429B-A66E-1935E44F4317"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)] private interface ITaskbarList2 : ITaskbarList { void MarkFullscreenWindow(IntPtr hwnd, bool fullscreen); }
+    [ComImport, Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)] private interface ITaskbarList3 : ITaskbarList2
     {
-        void HrInit();
-        void AddTab(IntPtr hwnd);
-        void DeleteTab(IntPtr hwnd);
-        void ActivateTab(IntPtr hwnd);
-        void SetActiveAlt(IntPtr hwnd);
+        void SetProgressValue(IntPtr hwnd, ulong completed, ulong total); void SetProgressState(IntPtr hwnd, TbpFlag flags); void RegisterTab(IntPtr hwndTab, IntPtr hwndMdi); void UnregisterTab(IntPtr hwndTab); void SetTabOrder(IntPtr hwndTab, IntPtr insertBefore); void SetTabActive(IntPtr hwndTab, IntPtr hwndMdi); void ThumbBarAddButtons(IntPtr hwnd, uint count, IntPtr buttons); void ThumbBarUpdateButtons(IntPtr hwnd, uint count, IntPtr buttons); void ThumbBarSetImageList(IntPtr hwnd, IntPtr imageList); void SetOverlayIcon(IntPtr hwnd, IntPtr icon, string description); void SetThumbnailTooltip(IntPtr hwnd, string tooltip); void SetThumbnailClip(IntPtr hwnd, ref RECT rect);
     }
-
-    [ComImport, Guid("602D4995-B13A-429B-A66E-1935E44F4317"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList2 : ITaskbarList
-    {
-        void MarkFullscreenWindow(IntPtr hwnd, bool fullscreen);
-    }
-
-    [ComImport, Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList3 : ITaskbarList2
-    {
-        void SetProgressValue(IntPtr hwnd, ulong ullCompleted, ulong ullTotal);
-        void SetProgressState(IntPtr hwnd, TbpFlag tbpFlags);
-        void RegisterTab(IntPtr hwndTab, IntPtr hwndMDI);
-        void UnregisterTab(IntPtr hwndTab);
-        void SetTabOrder(IntPtr hwndTab, IntPtr hwndInsertBefore);
-        void SetTabActive(IntPtr hwndTab, IntPtr hwndMDI);
-        void ThumbBarAddButtons(IntPtr hwnd, uint cButtons, IntPtr pButton);
-        void ThumbBarUpdateButtons(IntPtr hwnd, uint cButtons, IntPtr pButton);
-        void ThumbBarSetImageList(IntPtr hwnd, IntPtr himl);
-        void SetOverlayIcon(IntPtr hwnd, IntPtr hIcon, string pszDescription);
-        void SetThumbnailTooltip(IntPtr hwnd, string pszTip);
-        void SetThumbnailClip(IntPtr hwnd, ref RECT prcClip);
-    }
-
-    [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), ClassInterface(ClassInterfaceType.None)]
-    private class CTaskbarList
-    {
-    }
-
-    private enum TbpFlag : uint
-    {
-        NoProgress = 0,
-        Indeterminate = 0x1,
-        Normal = 0x2,
-        Error = 0x4,
-        Paused = 0x8,
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
+    [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), ClassInterface(ClassInterfaceType.None)] private sealed class CTaskbarList { }
+    private enum TbpFlag : uint { NoProgress = 0, Normal = 0x2 }
+    [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
 }

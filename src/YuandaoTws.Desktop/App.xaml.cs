@@ -38,6 +38,9 @@ public partial class App : System.Windows.Application
             collection.AddApplication();
             collection.AddInfrastructure();
             collection.AddSingleton<Services.WindowsStartupService>();
+            collection.AddSingleton<Services.DesktopPreferencesService>();
+            collection.AddSingleton<Services.WindowsColorPickerService>();
+            collection.AddSingleton<Services.DesktopThemeService>();
             collection.AddSingleton<DashboardViewModel>();
             collection.AddSingleton<Services.WindowBackdropService>();
             collection.AddSingleton<MainWindow>();
@@ -45,6 +48,7 @@ public partial class App : System.Windows.Application
             collection.AddSingleton<Services.TrayIconService>();
             collection.AddSingleton<Services.TaskbarOverlayService>();
             _services = collection.BuildServiceProvider();
+            _services.GetRequiredService<Services.DesktopThemeService>().Apply();
             var mainWindow = _services.GetRequiredService<MainWindow>();
             _ = _services.GetRequiredService<Services.ConnectionToastService>();
             _ = _services.GetRequiredService<Services.TrayIconService>();

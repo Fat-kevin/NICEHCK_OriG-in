@@ -18,7 +18,9 @@ internal static class BatteryStatusIconFactory
         double leftBattery,
         double rightBattery,
         bool leftCharging,
-        bool rightCharging)
+        bool rightCharging,
+        DesktopPreferences preferences,
+        bool isDark)
     {
         using var bitmap = new Bitmap(IconSize, IconSize, PixelFormat.Format32bppArgb);
         using (var graphics = Graphics.FromImage(bitmap))
@@ -28,8 +30,8 @@ internal static class BatteryStatusIconFactory
             graphics.Clear(Color.Transparent);
             graphics.CompositingMode = CompositingMode.SourceOver;
 
-            DrawBattery(graphics, new Rectangle(3, 7, 11, 19), leftBattery, leftCharging, isConnected);
-            DrawBattery(graphics, new Rectangle(18, 7, 11, 19), rightBattery, rightCharging, isConnected);
+            DrawBattery(graphics, new Rectangle(3, 6, 11, 20), leftBattery, leftCharging, isConnected, preferences, isDark);
+            DrawBattery(graphics, new Rectangle(18, 6, 11, 20), rightBattery, rightCharging, isConnected, preferences, isDark);
         }
 
         return bitmap.GetHicon();
@@ -48,10 +50,18 @@ internal static class BatteryStatusIconFactory
         Rectangle bounds,
         double battery,
         bool charging,
-        bool isConnected)
+        bool isConnected,
+        DesktopPreferences preferences,
+        bool isDark)
     {
-        var outlineColor = isConnected ? Color.FromArgb(235, 236, 242) : Color.FromArgb(145, 153, 165);
-        var fillColor = isConnected ? BatteryColor(battery) : Color.FromArgb(105, 115, 128);
+        var outlineColor = isConnected
+            ? (isDark ? Color.FromArgb(240, 242, 247) : Color.FromArgb(95, 109, 123))
+            : Color.FromArgb(125, 135, 147);
+        var fillColor = ToDrawing(BatteryColorResolver.Resolve(
+            isConnected ? battery : null,
+            isConnected,
+            charging,
+            preferences));
 
         using var outlinePen = new Pen(outlineColor, 1.6f);
         using var outlinePath = RoundedPath(bounds, 3);
@@ -75,7 +85,7 @@ internal static class BatteryStatusIconFactory
 
         if (charging && isConnected)
         {
-            using var boltPen = new Pen(Color.FromArgb(80, 229, 160), 1.6f)
+            using var boltPen = new Pen(ToDrawing(BatteryColorResolver.Parse(preferences.ChargingColor, BatteryColorResolver.LowColor)), 1.6f)
             {
                 LineJoin = LineJoin.Round,
                 StartCap = LineCap.Round,
@@ -92,12 +102,7 @@ internal static class BatteryStatusIconFactory
         }
     }
 
-    private static Color BatteryColor(double battery) => battery switch
-    {
-        <= 15 => Color.FromArgb(235, 92, 92),
-        <= 35 => Color.FromArgb(241, 172, 74),
-        _ => Color.FromArgb(70, 168, 236),
-    };
+    private static Color ToDrawing(System.Windows.Media.Color color) => Color.FromArgb(color.A, color.R, color.G, color.B);
 
     private static GraphicsPath RoundedPath(Rectangle bounds, int radius)
     {

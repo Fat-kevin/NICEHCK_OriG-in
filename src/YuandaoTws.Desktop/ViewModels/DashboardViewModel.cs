@@ -21,6 +21,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly HeadsetControlService _control;
     private readonly NoiseCancellingService _anc;
     private readonly WindowsStartupService _startup;
+    private readonly DesktopPreferencesService _preferences;
+    private readonly WindowsColorPickerService _colorPicker;
     private readonly IDisposable _controlSubscription;
     private readonly IDisposable _deviceSubscription;
     private readonly IDisposable _stateSubscription;
@@ -70,6 +72,14 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _inEarEnabled;
     [ObservableProperty] private bool _windSuppressionEnabled;
     [ObservableProperty] private bool _startWithWindows;
+    [ObservableProperty] private bool _taskbarWidgetEnabled;
+    [ObservableProperty] private string _batteryAccentColor = "#46A8EC";
+    [ObservableProperty] private string _chargingColor = "#50E5A0";
+    [ObservableProperty] private SolidColorBrush _batteryAccentBrush = BatteryColorResolver.Brush("#46A8EC", BatteryColorResolver.LowColor);
+    [ObservableProperty] private SolidColorBrush _chargingColorBrush = BatteryColorResolver.Brush("#50E5A0", BatteryColorResolver.LowColor);
+    [ObservableProperty] private SolidColorBrush _leftBatteryBrush = BatteryColorResolver.Brush("#46A8EC", BatteryColorResolver.LowColor);
+    [ObservableProperty] private SolidColorBrush _rightBatteryBrush = BatteryColorResolver.Brush("#46A8EC", BatteryColorResolver.LowColor);
+    [ObservableProperty] private SolidColorBrush _caseBatteryBrush = BatteryColorResolver.Brush("#46A8EC", BatteryColorResolver.LowColor);
     [ObservableProperty] private string _ancDetailText = "尚未连接耳机";
     [ObservableProperty] private string _ancStatusText = "降噪状态未知";
     [ObservableProperty] private string _equalizerDetailText = "尚未连接耳机";
@@ -81,13 +91,18 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         HeadsetControlService control,
         NoiseCancellingService anc,
         YuandaoChargingMonitorService chargingMonitor,
-        WindowsStartupService startup)
+        WindowsStartupService startup,
+        DesktopPreferencesService preferences,
+        WindowsColorPickerService colorPicker)
     {
         _connection = connection;
         _control = control;
         _anc = anc;
         _startup = startup;
+        _preferences = preferences;
+        _colorPicker = colorPicker;
         StartWithWindows = startup.IsEnabled;
+        ApplyDesktopPreferences(preferences.Current);
         _controlSubscription = control.StateChanged
             .ObserveOn(System.Reactive.Concurrency.DispatcherScheduler.Current)
             .Subscribe(ApplyState);
@@ -285,6 +300,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             LeftBatteryValue = 0;
             RightBatteryValue = 0;
             CaseBatteryValue = 0;
+            UpdateBatteryBrushes();
             AncMode = NoiseCancellingMode.Unknown;
             Equalizer = EqualizerPreset.Unknown;
             AncDetailText = "尚未连接耳机";
@@ -338,6 +354,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         LeftBatteryValue = battery.LeftEarPercent ?? 0;
         RightBatteryValue = battery.RightEarPercent ?? 0;
         CaseBatteryValue = battery.CasePercent ?? 0;
+        UpdateBatteryBrushes();
         // 主控 4E 帧没有在两个公开实现中定义充电字段；若状态服务已提供真实值，不能被 4E 查询覆盖。
         if (!_hasAuxiliaryBatteryState)
         {
@@ -389,6 +406,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         LeftChargingStatusBrush = ChargingBrush(_hasAuxiliaryBatteryState, _leftCharging);
         RightChargingStatusBrush = ChargingBrush(_hasAuxiliaryBatteryState, _rightCharging);
         CaseChargingStatusBrush = ChargingBrush(_hasAuxiliaryBatteryState, _caseCharging);
+        UpdateBatteryBrushes();
     }
 
     private static string FormatChargingStatus(bool hasStatus, bool charging) =>
@@ -526,6 +544,103 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             StartWithWindows = !enabled;
             ConnectionSubText = $"开机启动设置失败：{ex.Message}";
         }
+    }
+
+    [RelayCommand]
+    private void SetTaskbarWidget(object? value)
+    {
+        var enabled = value is bool requested ? requested : TaskbarWidgetEnabled;
+        try
+        {
+            _preferences.Update(preferences => preferences.TaskbarWidgetEnabled = enabled);
+            TaskbarWidgetEnabled = enabled;
+        }
+        catch (Exception ex)
+        {
+            TaskbarWidgetEnabled = !enabled;
+            ConnectionSubText = $"桌面显示设置失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ChooseBatteryAccent()
+    {
+        var selected = _colorPicker.Pick(BatteryAccentColor);
+        if (selected is null)
+        {
+            return;
+        }
+
+        SaveColor(preferences => preferences.BatteryAccentColor = selected);
+    }
+
+    [RelayCommand]
+    private void ChooseChargingColor()
+    {
+        var selected = _colorPicker.Pick(ChargingColor);
+        if (selected is null)
+        {
+            return;
+        }
+
+        SaveColor(preferences => preferences.ChargingColor = selected);
+    }
+
+    [RelayCommand]
+    private void ResetBatteryColors()
+    {
+        try
+        {
+            _preferences.ResetColors();
+            ApplyDesktopPreferences(_preferences.Current);
+        }
+        catch (Exception ex)
+        {
+            ConnectionSubText = $"颜色设置失败：{ex.Message}";
+        }
+    }
+
+    private void SaveColor(Action<DesktopPreferences> update)
+    {
+        try
+        {
+            _preferences.Update(update);
+            ApplyDesktopPreferences(_preferences.Current);
+        }
+        catch (Exception ex)
+        {
+            ConnectionSubText = $"颜色设置失败：{ex.Message}";
+        }
+    }
+
+    private void ApplyDesktopPreferences(DesktopPreferences preferences)
+    {
+        TaskbarWidgetEnabled = preferences.TaskbarWidgetEnabled;
+        BatteryAccentColor = preferences.BatteryAccentColor;
+        ChargingColor = preferences.ChargingColor;
+        BatteryAccentBrush = BatteryColorResolver.Brush(BatteryAccentColor, BatteryColorResolver.LowColor);
+        ChargingColorBrush = BatteryColorResolver.Brush(ChargingColor, BatteryColorResolver.LowColor);
+        UpdateBatteryBrushes();
+    }
+
+    private void UpdateBatteryBrushes()
+    {
+        var preferences = _preferences.Current;
+        LeftBatteryBrush = new SolidColorBrush(BatteryColorResolver.Resolve(
+            IsConnected && LeftBatteryText != "—" ? LeftBatteryValue : null,
+            IsConnected,
+            _leftCharging,
+            preferences));
+        RightBatteryBrush = new SolidColorBrush(BatteryColorResolver.Resolve(
+            IsConnected && RightBatteryText != "—" ? RightBatteryValue : null,
+            IsConnected,
+            _rightCharging,
+            preferences));
+        CaseBatteryBrush = new SolidColorBrush(BatteryColorResolver.Resolve(
+            IsConnected && CaseBatteryText != "—" ? CaseBatteryValue : null,
+            IsConnected,
+            _caseCharging,
+            preferences));
     }
 
     private static string FormatPercent(byte? value) => value is null ? "—" : $"{value}%";

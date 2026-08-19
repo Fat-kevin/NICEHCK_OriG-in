@@ -39,6 +39,8 @@ public sealed class TrayIconService : IDisposable
     private readonly MainWindow _mainWindow;
     private readonly NoiseCancellingService _anc;
     private readonly ILogger<TrayIconService> _logger;
+    private readonly DesktopPreferencesService _preferences;
+    private readonly DesktopThemeService _theme;
     private readonly ContextMenu _contextMenu = new();
     private readonly Dictionary<NoiseCancellingMode, MenuItem> _ancItems = new();
     private readonly IDisposable _ancSubscription;
@@ -53,12 +55,16 @@ public sealed class TrayIconService : IDisposable
         DashboardViewModel viewModel,
         MainWindow mainWindow,
         NoiseCancellingService anc,
+        DesktopPreferencesService preferences,
+        DesktopThemeService theme,
         ILogger<TrayIconService> logger)
     {
         _viewModel = viewModel;
         _mainWindow = mainWindow;
         _anc = anc;
         _logger = logger;
+        _preferences = preferences;
+        _theme = theme;
         AddAncSubmenu();
         AddMenuItem("打开控制面板", (_, _) => ShowMainWindow());
         AddMenuItem("重新连接耳机", ReconnectFromTray);
@@ -66,6 +72,8 @@ public sealed class TrayIconService : IDisposable
 
         _mainWindow.SourceInitialized += OnSourceInitialized;
         _viewModel.PropertyChanged += OnViewModelChanged;
+        _preferences.PreferencesChanged += OnPreferencesChanged;
+        _theme.ThemeChanged += OnThemeChanged;
         _ancSubscription = anc.ModeChanged
             .ObserveOn(System.Reactive.Concurrency.DispatcherScheduler.Current)
             .Subscribe(UpdateAncCheckmarks);
@@ -110,6 +118,10 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
+    private void OnPreferencesChanged(object? sender, EventArgs e) => UpdateTrayIcon();
+
+    private void OnThemeChanged(object? sender, EventArgs e) => UpdateTrayIcon();
+
     private void UpdateTrayIcon()
     {
         if (_hwnd == IntPtr.Zero || _disposed)
@@ -122,7 +134,9 @@ public sealed class TrayIconService : IDisposable
             _viewModel.LeftBatteryValue,
             _viewModel.RightBatteryValue,
             !string.IsNullOrEmpty(_viewModel.LeftChargeText),
-            !string.IsNullOrEmpty(_viewModel.RightChargeText));
+            !string.IsNullOrEmpty(_viewModel.RightChargeText),
+            _preferences.Current,
+            _theme.IsDark);
         var data = CreateNotifyIconData(nextIcon);
         var success = _iconAdded
             ? Shell_NotifyIcon(NimModify, ref data)
@@ -308,6 +322,8 @@ public sealed class TrayIconService : IDisposable
         _disposed = true;
         _ancSubscription.Dispose();
         _viewModel.PropertyChanged -= OnViewModelChanged;
+        _preferences.PreferencesChanged -= OnPreferencesChanged;
+        _theme.ThemeChanged -= OnThemeChanged;
         _mainWindow.SourceInitialized -= OnSourceInitialized;
         _source?.RemoveHook(WindowProc);
         _source = null;

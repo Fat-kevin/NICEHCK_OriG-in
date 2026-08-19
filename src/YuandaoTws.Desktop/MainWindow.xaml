@@ -21,7 +21,7 @@
     </shell:WindowChrome.WindowChrome>
 
     <!-- 唯一的窗口表面；窗口本身由原生 WindowRgn 裁成同样的圆角，不再叠加方框和内框。 -->
-    <Border Background="{StaticResource GlassShellBrush}" BorderBrush="#B8FFFFFF" BorderThickness="1" CornerRadius="26" ClipToBounds="True" Effect="{StaticResource FloatingShadow}">
+    <Border Background="{StaticResource GlassShellBrush}" BorderBrush="{StaticResource GlassBorderStrongBrush}" BorderThickness="1" CornerRadius="26" ClipToBounds="True" Effect="{StaticResource FloatingShadow}">
         <Grid>
             <Grid.RowDefinitions><RowDefinition Height="76" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 
@@ -53,9 +53,9 @@
                                 <Image x:Name="ChargingCaseImage" Grid.Column="2" Width="132" Height="82" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True"><Image.RenderTransform><TransformGroup><ScaleTransform x:Name="ChargingCaseScale" ScaleX="0.92" ScaleY="0.92" /><RotateTransform x:Name="ChargingCaseTilt" /><TranslateTransform x:Name="ChargingCaseFloat" /></TransformGroup></Image.RenderTransform></Image>
                             </Grid>
                             <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Style="{StaticResource InsetSurface}" Margin="0,0,5,0" Padding="11,7,11,8"><StackPanel><TextBlock Text="左耳" Style="{StaticResource StatLabel}" /><TextBlock Text="{Binding LeftBatteryText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0" /><ProgressBar Style="{StaticResource BatteryBar}" Value="{Binding LeftBatteryValue}" Margin="0,5,0,0" /></StackPanel></Border>
-                                <Border Grid.Column="1" Style="{StaticResource InsetSurface}" Margin="2,0,2,0" Padding="11,7,11,8"><StackPanel><TextBlock Text="右耳" Style="{StaticResource StatLabel}" /><TextBlock Text="{Binding RightBatteryText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0" /><ProgressBar Style="{StaticResource BatteryBar}" Value="{Binding RightBatteryValue}" Margin="0,5,0,0" /></StackPanel></Border>
-                                <Border Grid.Column="2" Style="{StaticResource InsetSurface}" Margin="5,0,0,0" Padding="11,7,11,8"><StackPanel><TextBlock Text="充电盒" Style="{StaticResource StatLabel}" /><TextBlock Text="{Binding CaseBatteryText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0" /><ProgressBar Style="{StaticResource BatteryBar}" Value="{Binding CaseBatteryValue}" Margin="0,5,0,0" /></StackPanel></Border>
+                                <Border Grid.Column="0" Style="{StaticResource InsetSurface}" Margin="0,0,5,0" Padding="11,7,11,8"><StackPanel><TextBlock Text="左耳" Style="{StaticResource StatLabel}" /><TextBlock Text="{Binding LeftBatteryText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0" /><ProgressBar Style="{StaticResource BatteryBar}" Foreground="{Binding LeftBatteryBrush}" Value="{Binding LeftBatteryValue}" Margin="0,5,0,0" /></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource InsetSurface}" Margin="2,0,2,0" Padding="11,7,11,8"><StackPanel><TextBlock Text="右耳" Style="{StaticResource StatLabel}" /><TextBlock Text="{Binding RightBatteryText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0" /><ProgressBar Style="{StaticResource BatteryBar}" Foreground="{Binding RightBatteryBrush}" Value="{Binding RightBatteryValue}" Margin="0,5,0,0" /></StackPanel></Border>
+                                <Border Grid.Column="2" Style="{StaticResource InsetSurface}" Margin="5,0,0,0" Padding="11,7,11,8"><StackPanel><TextBlock Text="充电盒" Style="{StaticResource StatLabel}" /><TextBlock Text="{Binding CaseBatteryText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0" /><ProgressBar Style="{StaticResource BatteryBar}" Foreground="{Binding CaseBatteryBrush}" Value="{Binding CaseBatteryValue}" Margin="0,5,0,0" /></StackPanel></Border>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -69,7 +69,7 @@
                     </Border>
                 </StackPanel>
 
-                <Border Grid.Column="1" BorderBrush="#58FFFFFF" BorderThickness="1,0,0,0" Padding="22,4,0,0">
+                <Border Grid.Column="1" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1,0,0,0" Padding="22,4,0,0">
                     <Grid>
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <StackPanel Grid.Row="0"><TextBlock Text="声音与连接" Style="{StaticResource EyebrowText}" /><TextBlock Text="偏好设置" Style="{StaticResource SectionTitle}" Margin="0,5,0,3" /><TextBlock Text="连接后可调整以下设置。" Style="{StaticResource SectionCaption}" /></StackPanel>
@@ -82,6 +82,12 @@
                         </StackPanel>
                         <StackPanel Grid.Row="2">
                             <Border Background="{StaticResource GlassPanelSoftBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="13,11" Margin="0,18,0,0"><StackPanel Orientation="Horizontal"><Ellipse Width="8" Height="8" Fill="{Binding ConnectionDotBrush}" Margin="0,1,10,0" VerticalAlignment="Top" /><StackPanel><TextBlock Text="{Binding StatusText}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" /><TextBlock Text="{Binding ConnectionSubText}" Style="{StaticResource SectionCaption}" TextWrapping="Wrap" FontSize="11" Margin="0,3,0,0" /></StackPanel></StackPanel></Border>
+                            <Border Background="{StaticResource GlassPanelSoftBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="13,10" Margin="0,10,0,0">
+                                <StackPanel>
+                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="桌面显示" Style="{StaticResource StatLabel}" /><TextBlock Text="任务栏状态胶囊" Style="{StaticResource SectionCaption}" FontSize="11" Margin="0,3,0,0" /></StackPanel><ToggleButton Grid.Column="1" IsChecked="{Binding TaskbarWidgetEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Command="{Binding SetTaskbarWidgetCommand}" CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}" Style="{StaticResource SwitchToggle}" VerticalAlignment="Center" /></Grid>
+                                    <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="电量颜色" Style="{StaticResource SectionCaption}" VerticalAlignment="Center" /><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Style="{StaticResource ColorSwatchButton}" Background="{Binding BatteryAccentBrush}" Command="{Binding ChooseBatteryAccentCommand}" ToolTip="选择正常电量颜色" /><Button Style="{StaticResource ColorSwatchButton}" Background="{Binding ChargingColorBrush}" Command="{Binding ChooseChargingColorCommand}" Margin="6,0,0,0" ToolTip="选择充电颜色" /><Button Content="恢复" Style="{StaticResource TextActionButton}" Command="{Binding ResetBatteryColorsCommand}" Margin="8,0,0,0" /></StackPanel></Grid>
+                                </StackPanel>
+                            </Border>
                             <Border Background="{StaticResource GlassPanelSoftBrush}" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="13,10" Margin="0,10,0,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="开机启动" Style="{StaticResource StatLabel}" /><TextBlock Text="启动后隐藏到通知区域" Style="{StaticResource SectionCaption}" FontSize="11" Margin="0,3,0,0" /></StackPanel><ToggleButton Grid.Column="1" IsChecked="{Binding StartWithWindows, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Command="{Binding SetStartupCommand}" CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}" Style="{StaticResource SwitchToggle}" VerticalAlignment="Center" /></Grid></Border>
                         </StackPanel>
                     </Grid>

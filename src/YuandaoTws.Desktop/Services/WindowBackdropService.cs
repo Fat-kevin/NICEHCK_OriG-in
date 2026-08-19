@@ -13,6 +13,7 @@ namespace YuandaoTws.Desktop.Services;
 public sealed class WindowBackdropService : IDisposable
 {
     private const int DwmwaWindowCornerPreference = 33;
+    private const int DwmwaUseImmersiveDarkMode = 20;
     private const int DwmcpRound = 2;
     private const uint DwmBbEnable = 0x1;
 
@@ -20,6 +21,7 @@ public sealed class WindowBackdropService : IDisposable
     private const int AccentEnableBlurBehind = 3;
     private const int AccentEnableAcrylicBlurBehind = 4;
     private byte _opacity = 0x72;
+    private bool _isDark;
     private readonly NativeCompositionBackdropService _composition = new();
     private const double WindowCornerRadius = 26;
 
@@ -44,6 +46,7 @@ public sealed class WindowBackdropService : IDisposable
         ApplyRoundedWindowRegion(window);
         var round = DwmcpRound;
         _ = DwmSetWindowAttribute(handle, DwmwaWindowCornerPreference, ref round, sizeof(int));
+        ApplyTheme(window, IsSystemDarkMode());
 
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17134))
         {
@@ -75,6 +78,43 @@ public sealed class WindowBackdropService : IDisposable
             TransitionOnMaximized = false,
         };
         _ = DwmEnableBlurBehindWindow(handle, ref blur);
+    }
+
+    public void ApplyTheme(Window window, bool isDark)
+    {
+        _isDark = isDark;
+        var handle = new WindowInteropHelper(window).Handle;
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var dark = isDark ? 1 : 0;
+        _ = DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkMode, ref dark, sizeof(int));
+        if (_composition.IsActive)
+        {
+            _composition.SetOpacity(_opacity);
+        }
+        else if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17134))
+        {
+            if (!SetAccentPolicy(handle, AccentEnableAcrylicBlurBehind, _opacity))
+            {
+                _ = SetAccentPolicy(handle, AccentEnableBlurBehind, _opacity);
+            }
+        }
+    }
+
+    private static bool IsSystemDarkMode()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
+            return key?.GetValue("AppsUseLightTheme") is int value && value == 0;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private static void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
@@ -138,7 +178,7 @@ public sealed class WindowBackdropService : IDisposable
         }
     }
 
-    private static bool SetAccentPolicy(IntPtr handle, int accentState, byte opacity)
+    private bool SetAccentPolicy(IntPtr handle, int accentState, byte opacity)
     {
         var policy = new AccentPolicy
         {
@@ -146,7 +186,7 @@ public sealed class WindowBackdropService : IDisposable
             // 2 保留系统边缘/阴影行为，不生成额外的 WPF 外框。
             Flags = 2,
             // ARGB：低 alpha 让后方应用内容可见，WPF 面板再负责文本可读性。
-            GradientColor = (opacity << 24) | 0xEEF5FB,
+            GradientColor = (opacity << 24) | (_isDark ? 0x202A35 : 0xEEF5FB),
         };
 
         var size = Marshal.SizeOf<AccentPolicy>();

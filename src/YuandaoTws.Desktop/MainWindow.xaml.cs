@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Interop;
 using YuandaoTws.Desktop.Services;
 using YuandaoTws.Desktop.ViewModels;
 
@@ -12,20 +13,41 @@ namespace YuandaoTws.Desktop;
 public partial class MainWindow : Window
 {
     private readonly WindowBackdropService _backdrop;
+    private readonly DesktopThemeService _theme;
+    private HwndSource? _source;
     private bool _deviceAnimationStarted;
 
     public DashboardViewModel ViewModel { get; }
 
-    public MainWindow(DashboardViewModel viewModel, WindowBackdropService backdrop)
+    public MainWindow(DashboardViewModel viewModel, WindowBackdropService backdrop, DesktopThemeService theme)
     {
         ViewModel = viewModel;
         _backdrop = backdrop;
+        _theme = theme;
         // XAML 控件在 InitializeComponent 期间可能触发 ValueChanged，依赖项必须先就绪。
         InitializeComponent();
         DataContext = ViewModel;
         ConfigureDeviceIllustrations();
         Loaded += StartDeviceIllustrations;
-        SourceInitialized += (_, _) => _backdrop.Apply(this);
+        SourceInitialized += OnSourceInitialized;
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        _backdrop.Apply(this);
+        _backdrop.ApplyTheme(this, _theme.IsDark);
+        _source = HwndSource.FromHwnd(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+        _source?.AddHook(ThemeWindowProc);
+    }
+
+    private IntPtr ThemeWindowProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (message == 0x001A)
+        {
+            _theme.Apply();
+            _backdrop.ApplyTheme(this, _theme.IsDark);
+        }
+        return IntPtr.Zero;
     }
 
     private void ConfigureDeviceIllustrations()
