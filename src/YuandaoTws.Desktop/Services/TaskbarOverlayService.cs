@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using YuandaoTws.Desktop.ViewModels;
 
@@ -18,6 +19,9 @@ public sealed class TaskbarOverlayService : IDisposable
     private ITaskbarList3? _taskbar;
     private NativeTaskbarBatteryWindow? _batteryWindow;
     private int _disposed;
+    private int _refreshQueued;
+    private int _paletteRefreshRequested;
+    private bool _batteryWindowShown;
 
     public TaskbarOverlayService(MainWindow window, DashboardViewModel viewModel, DesktopPreferencesService preferences, DesktopThemeService theme, ILogger<TaskbarOverlayService> logger)
     {
@@ -35,7 +39,7 @@ public sealed class TaskbarOverlayService : IDisposable
         if (_hwnd == IntPtr.Zero) return;
         try { _taskbar = (ITaskbarList3)(object)new CTaskbarList(); _taskbar.HrInit(); }
         catch (Exception ex) { DisableTaskbarOverlay(ex); }
-        EnsureBatteryWindow(); UpdateBatteryWindow(); UpdateOverlay();
+        ApplyRefresh(true);
     }
 
     private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -46,30 +50,78 @@ public sealed class TaskbarOverlayService : IDisposable
             or nameof(DashboardViewModel.CaseBatteryValue) or nameof(DashboardViewModel.LeftChargeText)
             or nameof(DashboardViewModel.RightChargeText) or nameof(DashboardViewModel.TaskbarWidgetEnabled)
             or nameof(DashboardViewModel.BatteryAccentColor) or nameof(DashboardViewModel.ChargingColor))) return;
-        try { EnsureBatteryWindow(); UpdateBatteryWindow(); UpdateOverlay(); }
-        catch (Exception ex) { _logger.LogWarning(ex, "任务栏状态更新失败，主界面继续运行"); }
+        QueueRefresh(false);
     }
 
     private void OnPreferencesChanged(object? sender, EventArgs e)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
-        _window.Dispatcher.InvokeAsync(() => { EnsureBatteryWindow(); UpdateBatteryWindow(); UpdateOverlay(); });
+        QueueRefresh(true);
     }
 
-    private void OnThemeChanged(object? sender, EventArgs e) => _batteryWindow?.UpdatePalette(BuildPalette());
+    private void OnThemeChanged(object? sender, EventArgs e) => QueueRefresh(true);
 
-    private void EnsureBatteryWindow()
+    private void QueueRefresh(bool updatePalette)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (updatePalette) Interlocked.Exchange(ref _paletteRefreshRequested, 1);
+        if (Interlocked.Exchange(ref _refreshQueued, 1) != 0) return;
+
+        try
+        {
+            _window.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                Interlocked.Exchange(ref _refreshQueued, 0);
+                if (Volatile.Read(ref _disposed) != 0) return;
+                var refreshPalette = Interlocked.Exchange(ref _paletteRefreshRequested, 0) != 0;
+                ApplyRefresh(refreshPalette);
+            }));
+        }
+        catch (Exception ex)
+        {
+            Interlocked.Exchange(ref _refreshQueued, 0);
+            _logger.LogDebug(ex, "任务栏刷新已跳过：窗口调度器正在关闭");
+        }
+    }
+
+    private void ApplyRefresh(bool updatePalette)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        try
+        {
+            EnsureBatteryWindow(updatePalette);
+            UpdateBatteryWindow();
+            UpdateOverlay();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "任务栏状态更新失败，主界面继续运行");
+        }
+    }
+
+    private void EnsureBatteryWindow(bool updatePalette)
     {
         if (!_viewModel.TaskbarWidgetEnabled)
         {
-            _batteryWindow?.Dispose(); _batteryWindow = null; ClearTaskbarProgress(); return;
+            _batteryWindow?.Dispose();
+            _batteryWindow = null;
+            _batteryWindowShown = false;
+            ClearTaskbarProgress();
+            return;
         }
         if (_batteryWindow is null)
         {
-            try { _batteryWindow = new NativeTaskbarBatteryWindow(ShowMainWindow, _window.Dispatcher, BuildPalette()); }
+            try
+            {
+                _batteryWindow = new NativeTaskbarBatteryWindow(ShowMainWindow, _window.Dispatcher, BuildPalette());
+                _batteryWindowShown = false;
+            }
             catch (Exception ex) { _logger.LogError(ex, "原生任务栏状态胶囊初始化失败"); _batteryWindow = null; }
         }
-        else _batteryWindow.UpdatePalette(BuildPalette());
+        else if (updatePalette)
+        {
+            _batteryWindow.UpdatePalette(BuildPalette());
+        }
     }
 
     private void UpdateBatteryWindow()
@@ -78,7 +130,10 @@ public sealed class TaskbarOverlayService : IDisposable
         var leftCharging = !string.IsNullOrEmpty(_viewModel.LeftChargeText);
         var rightCharging = !string.IsNullOrEmpty(_viewModel.RightChargeText);
         _batteryWindow.UpdateStatus(_viewModel.IsConnected, _viewModel.IsSearching, _viewModel.LeftBatteryValue, _viewModel.RightBatteryValue, leftCharging, rightCharging);
-        _batteryWindow.Show(_viewModel.IsConnected, _viewModel.IsSearching, _viewModel.LeftBatteryValue, _viewModel.RightBatteryValue, leftCharging, rightCharging);
+        if (!_batteryWindowShown)
+        {
+            _batteryWindowShown = _batteryWindow.Show();
+        }
     }
 
     private NativeTaskbarPalette BuildPalette()

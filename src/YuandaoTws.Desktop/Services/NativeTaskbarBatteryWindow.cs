@@ -78,16 +78,16 @@ public sealed class NativeTaskbarBatteryWindow : IDisposable
         _hostWatchTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(TimerIntervalMs), DispatcherPriority.Background, (_, _) => MaintainTaskbarHost(), dispatcher);
     }
 
-    public void Show(bool isConnected, bool isSearching, double leftBattery, double rightBattery, bool leftCharging = false, bool rightCharging = false)
+    public bool Show()
     {
-        if (_disposed) return;
-        UpdateStatus(isConnected, isSearching, leftBattery, rightBattery, leftCharging, rightCharging);
+        if (_disposed) return false;
         _hostWatchTimer.Start();
         EnsureCreated();
-        if (_hwnd == IntPtr.Zero) return;
+        if (_hwnd == IntPtr.Zero) return false;
         ShowWindow(_hwnd, SwShownoactivate);
         EnsureDpi();
-        PositionOnTaskbar(true);
+        PositionOnTaskbar(false);
+        return true;
     }
 
     public void UpdateStatus(bool isConnected, bool isSearching, double leftBattery, double rightBattery, bool leftCharging = false, bool rightCharging = false)
@@ -197,7 +197,10 @@ public sealed class NativeTaskbarBatteryWindow : IDisposable
         if (_hwnd == IntPtr.Zero) return;
         var radius = Scale(BaseRadius);
         var region = CreateRoundRectRgn(0, 0, _width + 1, _height + 1, radius * 2, radius * 2);
-        if (region != IntPtr.Zero) _ = SetWindowRgn(_hwnd, region, true);
+        if (region != IntPtr.Zero && SetWindowRgn(_hwnd, region, true) == 0)
+        {
+            DeleteObject(region);
+        }
     }
 
     private void Paint(IntPtr hdc)
@@ -335,6 +338,7 @@ public sealed class NativeTaskbarBatteryWindow : IDisposable
     [DllImport("user32.dll")] private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint key, byte alpha, uint flags);
     [DllImport("user32.dll")] private static extern int SetWindowRgn(IntPtr hwnd, IntPtr region, bool redraw);
     [DllImport("gdi32.dll")] private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+    [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr handle);
 }
 
 internal static class GraphicsExtensions

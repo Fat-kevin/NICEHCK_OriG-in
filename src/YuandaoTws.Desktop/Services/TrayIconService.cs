@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using YuandaoTws.Application.Services;
 using YuandaoTws.Desktop.ViewModels;
@@ -49,6 +50,7 @@ public sealed class TrayIconService : IDisposable
     private IntPtr _iconHandle;
     private bool _iconAdded;
     private bool _disposed;
+    private int _iconRefreshQueued;
     private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
 
     public TrayIconService(
@@ -110,17 +112,36 @@ public sealed class TrayIconService : IDisposable
             or nameof(DashboardViewModel.IsSearching)
             or nameof(DashboardViewModel.LeftBatteryValue)
             or nameof(DashboardViewModel.RightBatteryValue)
-            or nameof(DashboardViewModel.CaseBatteryValue)
             or nameof(DashboardViewModel.LeftChargeText)
             or nameof(DashboardViewModel.RightChargeText))
         {
-            UpdateTrayIcon();
+            QueueTrayIconUpdate();
         }
     }
 
-    private void OnPreferencesChanged(object? sender, EventArgs e) => UpdateTrayIcon();
+    private void OnPreferencesChanged(object? sender, EventArgs e) => QueueTrayIconUpdate();
 
-    private void OnThemeChanged(object? sender, EventArgs e) => UpdateTrayIcon();
+    private void OnThemeChanged(object? sender, EventArgs e) => QueueTrayIconUpdate();
+
+    private void QueueTrayIconUpdate()
+    {
+        if (_disposed || _hwnd == IntPtr.Zero) return;
+        if (Interlocked.Exchange(ref _iconRefreshQueued, 1) != 0) return;
+
+        try
+        {
+            _mainWindow.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                Interlocked.Exchange(ref _iconRefreshQueued, 0);
+                if (!_disposed) UpdateTrayIcon();
+            }));
+        }
+        catch (Exception ex)
+        {
+            Interlocked.Exchange(ref _iconRefreshQueued, 0);
+            _logger.LogDebug(ex, "托盘图标刷新已跳过：窗口调度器正在关闭");
+        }
+    }
 
     private void UpdateTrayIcon()
     {
