@@ -4,125 +4,164 @@
 
 ## 原道「原点」TWS Windows 控制中心
 
-连接耳机、查看左右耳与充电盒状态，并在 Windows 桌面快速控制降噪和音效。
+在 Windows 桌面上连接、查看和控制原道「原点」降噪耳机。
 
-[![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=flat-square&logo=windows&logoColor=white)](https://www.microsoft.com/windows) [![最新版本](https://img.shields.io/github/v/release/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=最新版本)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases/latest) [![下载量](https://img.shields.io/github/downloads/Fat-kevin/NICEHCK_OriG-in/total?style=flat-square&label=下载量)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases) [![Release 日期](https://img.shields.io/github/release-date/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=Release%20日期)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases)
-[![最后提交](https://img.shields.io/github/last-commit/Fat-kevin/NICEHCK_OriG-in/main?style=flat-square&label=最后提交)](https://github.com/Fat-kevin/NICEHCK_OriG-in/commits/main) [![提交活跃度](https://img.shields.io/github/commit-activity/m/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=提交活跃度)](https://github.com/Fat-kevin/NICEHCK_OriG-in/graphs/commit-activity) [![仓库大小](https://img.shields.io/github/repo-size/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=仓库大小)](https://github.com/Fat-kevin/NICEHCK_OriG-in) [![贡献者](https://img.shields.io/github/contributors/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=贡献者)](https://github.com/Fat-kevin/NICEHCK_OriG-in/graphs/contributors)
-[![Stars](https://img.shields.io/github/stars/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=Stars)](https://github.com/Fat-kevin/NICEHCK_OriG-in/stargazers) [![Forks](https://img.shields.io/github/forks/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=Forks)](https://github.com/Fat-kevin/NICEHCK_OriG-in/network/members) [![Issues](https://img.shields.io/github/issues/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=Issues)](https://github.com/Fat-kevin/NICEHCK_OriG-in/issues) [![语言数量](https://img.shields.io/github/languages/count/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=语言数量)](https://github.com/Fat-kevin/NICEHCK_OriG-in)
-[![C%23](https://img.shields.io/badge/C%23-.NET%208-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/) [![WPF](https://img.shields.io/badge/UI-WPF-0078D4?style=flat-square&logo=windows&logoColor=white)](https://learn.microsoft.com/dotnet/desktop/wpf/) [![WinRT](https://img.shields.io/badge/API-WinRT-107C10?style=flat-square&logo=windows&logoColor=white)](https://learn.microsoft.com/windows/uwp/csharp-and-visual-basic/) [![x64](https://img.shields.io/badge/发布-x64-555555?style=flat-square)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases) [![Self-contained](https://img.shields.io/badge/.NET-Self--contained-512BD4?style=flat-square)](https://learn.microsoft.com/dotnet/core/deploying/) [![原生 Windows](https://img.shields.io/badge/技术栈-Native%20Windows-0078D4?style=flat-square&logo=windows&logoColor=white)](https://github.com/Fat-kevin/NICEHCK_OriG-in)
+[![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=flat-square&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+[![最新版本](https://img.shields.io/github/v/release/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=最新版本)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases/latest)
+[![下载量](https://img.shields.io/github/downloads/Fat-kevin/NICEHCK_OriG-in/total?style=flat-square&label=下载量)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases)
+[![Release 日期](https://img.shields.io/github/release-date/Fat-kevin/NICEHCK_OriG-in?style=flat-square&label=Release%20日期)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases)
+[![x64](https://img.shields.io/badge/发布-x64-555555?style=flat-square)](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases)
+[![原生 Windows](https://img.shields.io/badge/应用-原生%20Windows-0078D4?style=flat-square&logo=windows&logoColor=white)](https://github.com/Fat-kevin/NICEHCK_OriG-in)
 
 </div>
 
 <div align="center">
-  <img src="src/YuandaoTws.Desktop/Assets/yuandao-earbuds-model.png" width="520" alt="原道原点耳机" />
+  <img src="src/YuandaoTws.Desktop/Assets/yuandao-earbuds-model.png" width="560" alt="原道原点耳机与充电盒" />
 </div>
 
-## 功能
+## 这是什么
 
-| 功能 | 说明 |
-| --- | --- |
-| 自动连接 | 启动后自动查找已配对的原道耳机，断开后自动重连 |
-| 独立电量 | 分别显示左耳、右耳和充电盒电量 |
-| 充电状态 | 使用绿色闪电标记当前正在充电的设备；无法确认时显示未知 |
-| 降噪模式 | 关闭、通透、普通、深度、试验、风噪六种模式 |
-| 均衡器 | 悔恨之泪、均衡中正、欧美澎湃、真律还原、游戏优化、细腻佳音、温婉人声 |
-| 快捷开关 | 游戏模式、低延迟、双设备连接、入耳检测、抗风噪 |
-| 桌面常驻 | 通知区域显示左右耳电量，鼠标悬停查看精确百分比 |
-| 任务栏状态 | 左下角原生状态控件实时显示连接状态和双耳电量 |
-| 连接提醒 | 耳机连接后在右下角显示电量、降噪和充电信息 |
-| 快速操作 | 托盘右键菜单可打开主界面、重新连接或切换降噪模式 |
-| 开机启动 | 可选随 Windows 启动，启动后自动隐藏到通知区域 |
-| 原生窗口 | 支持 Windows 毛玻璃/背景采样效果，不依赖浏览器或 WebView |
-| 单实例 | 重复启动时自动唤起已有窗口，不会生成多个进程和多个托盘图标 |
+原点耳机控制是一款面向 Windows 10/11 的原生桌面工具，专为原道「原点」TWS 耳机设计。
 
-## 设备图片
+它把耳机的连接状态、电量、降噪和音效控制集中在一个轻量的桌面应用中，不需要浏览器，不依赖 WebView，也不需要额外安装 .NET 运行时。
+
+## 功能一览
+
+### 耳机状态
+
+- 自动查找已配对的原道耳机并连接。
+- 断开后自动重连，连接状态始终保持一致。
+- 分别显示左耳、右耳和充电盒电量。
+- 显示左右耳独立充电状态，充电时使用绿色闪电提示。
+- 显示当前固件版本和设备状态。
+
+### 降噪与音效
+
+- 六种降噪模式：关闭、通透、普通、深度、试验、风噪。
+- 七种均衡器预设：悔恨之泪、均衡中正、欧美澎湃、真律还原、游戏优化、细腻佳音、温婉人声。
+- 游戏模式、低延迟模式、双设备连接、入耳检测和抗风噪。
+
+### Windows 桌面体验
+
+- 原生 Windows 窗口和毛玻璃背景采样效果。
+- 浅色、深色主题切换，深色模式支持清晰的层级和文字对比度。
+- 右下角连接提醒：显示耳机电量、充电信息和降噪状态。
+- 连接提醒可以直接打开控制中心或切换降噪模式。
+- 通知区域图标显示左右耳电量，悬停可查看详细状态。
+- 任务栏状态胶囊实时显示双耳电量，可在设置中关闭。
+- 可选开机启动，启动后自动隐藏到通知区域。
+- 单实例运行，重复打开时自动唤起已有窗口。
+
+## 界面与设备展示
 
 <div align="center">
 <table>
 <tr>
-<td align="center"><img src="src/YuandaoTws.Desktop/Assets/yuandao-earbud-left.png" width="150" alt="原道左耳" /><br />左耳</td>
-<td align="center"><img src="src/YuandaoTws.Desktop/Assets/yuandao-earbud-right.png" width="150" alt="原道右耳" /><br />右耳</td>
-<td align="center"><img src="src/YuandaoTws.Desktop/Assets/yuandao-charging-case.png" width="220" alt="原道充电盒" /><br />充电盒</td>
+<td align="center"><img src="src/YuandaoTws.Desktop/Assets/yuandao-earbud-left.png" width="150" alt="原道左耳" /><br /><sub>左耳</sub></td>
+<td align="center"><img src="src/YuandaoTws.Desktop/Assets/yuandao-earbud-right.png" width="150" alt="原道右耳" /><br /><sub>右耳</sub></td>
+<td align="center"><img src="src/YuandaoTws.Desktop/Assets/yuandao-charging-case.png" width="220" alt="原道充电盒" /><br /><sub>充电盒</sub></td>
 </tr>
 </table>
 </div>
 
+主界面重点展示三路电量和当前连接状态，常用的降噪、均衡器与快捷开关按功能分组；透明背景会带入后方应用内容，同时保持文字和控件清晰可读。
+
 ## 下载
 
-前往 [Releases](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases) 下载最新版本。
+前往 [GitHub Releases](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases/latest) 下载最新版本。
 
-| 文件 | 适合谁 |
+| 文件 | 推荐场景 |
 | --- | --- |
-| `YuandaoTws-Setup-v0.1.7.exe` | 推荐。完整安装版，支持开始菜单、快捷方式、开机启动和卸载 |
-| `YuandaoTws-Desktop-v0.1.7-win-x64-portable.zip` | 便携版，解压后直接运行，不写入安装目录 |
-| `SHA256SUMS.txt` | 用于校验下载文件完整性 |
+| [`YuandaoTws-Setup-v0.1.7.exe`](https://github.com/Fat-kevin/NICEHCK_OriG-in/releases/download/v0.1.7/YuandaoTws-Setup-v0.1.7.exe) | 推荐。可选择安装位置，支持开始菜单、桌面快捷方式、开机启动和卸载。 |
+| `YuandaoTws-Desktop-v0.1.7-win-x64-portable.zip` | 便携版。解压后直接运行，不写入安装目录。 |
+| `SHA256SUMS.txt` | 下载文件完整性校验。 |
 
-### 安装
+## 快速开始
 
-1. 在 Windows 蓝牙设置中先完成耳机配对。
+1. 打开 Windows **设置 → 蓝牙和设备**，先完成耳机配对。
 2. 下载并运行 `YuandaoTws-Setup-v0.1.7.exe`。
-3. 从开始菜单或桌面快捷方式打开“原点耳机控制”。
-4. 需要时在右侧设置中打开“开机启动”。
+3. 安装完成后，从开始菜单或桌面快捷方式打开“原点耳机控制”。
+4. 打开充电盒并靠近电脑，应用会自动查找并连接耳机。
+5. 在右侧偏好设置中按需开启任务栏状态胶囊、开机启动和深色模式。
 
-安装程序会在 Windows 的“已安装的应用”中注册卸载入口，开始菜单中也提供“卸载 原点耳机控制”。卸载时会同时移除开机启动项和本软件创建的本地日志目录。
+安装程序会注册标准卸载入口。可以在 Windows“已安装的应用”中卸载，也可以从开始菜单打开“卸载 原点耳机控制”。
 
-## 使用说明
+## 日常使用
 
 ### 主界面
 
-主界面会集中显示连接状态、固件版本、三路电量、充电标志、降噪模式和均衡器。连接断开后，界面会清除上一轮设备数据并回到“等待连接”。
+主界面会集中显示连接状态、固件版本、左右耳电量、充电盒电量、充电状态、降噪模式和均衡器。耳机断开后，旧设备状态会被清除，界面回到“等待连接”。
 
 ### 通知区域
 
-程序运行后会在通知区域显示耳机图标：
+程序运行后会显示通知区域图标：
 
-- 左右两根电池柱代表左右耳电量。
+- 左右电池轮廓分别代表左右耳电量。
+- 电池颜色会随电量变化，低电量使用警示色。
 - 绿色闪电表示对应耳机正在充电。
-- 鼠标悬停可以查看精确电量。
-- 左键打开主界面，右键切换降噪或重新连接。
+- 左键打开控制中心，右键可重新连接或快速切换降噪模式。
 
 ### 连接提醒
 
-检测到耳机连接后，右下角会出现连接提醒。提醒中会显示左右耳电量、充电盒信息、降噪状态和充电状态。点击提醒可以打开主界面，也可以直接选择降噪模式。
+连接成功后，右下角会出现连接提醒。提醒中会显示左右耳电量、充电盒信息、充电状态和当前降噪模式。点击提醒可以打开控制中心，也可以直接选择降噪模式。
 
 ## 系统要求
 
-- Windows 10 或 Windows 11，64 位
-- 可用的蓝牙适配器
-- 耳机已在 Windows 蓝牙设置中完成配对
-- 安装版不需要额外安装 .NET 运行时
+- Windows 10 或 Windows 11，64 位。
+- 可用的蓝牙适配器。
+- 耳机已在 Windows 蓝牙设置中完成配对。
+- 安装版已包含运行所需组件，不需要额外安装 .NET 运行时。
 
 ## 常见问题
 
-### 为什么显示“等待连接”？
+### 应用显示“等待连接”
 
-请确认耳机已经在 Windows 蓝牙设置中配对，并打开充电盒靠近电脑。若耳机同时连接了手机，可能需要先暂时断开手机连接。
+请确认耳机已经在 Windows 蓝牙设置中配对，并打开充电盒靠近电脑。如果耳机同时连接了手机，请先暂时断开手机连接再重试。
 
-### 为什么电量显示“—”？
+### 电量显示“—”
 
 “—”表示设备暂时没有返回该项数据，不代表电量为 0%。保持耳机连接并等待状态刷新即可。
 
-### 为什么 Windows 显示安全提示？
+### 右下角连接提醒没有显示
 
-未进行商业代码签名的安装包在首次运行时可能触发 Windows SmartScreen 提示。请从本项目的 GitHub Releases 下载，并在运行前核对文件名和 SHA256 校验值。
+连接提醒只在检测到新的连接时出现，并会在一段时间后自动隐藏。重新断开并连接耳机即可再次触发；主界面和通知区域图标不受影响。
 
-### 如何完全退出？
+### Windows 显示安全提示
 
-右键点击通知区域图标，选择“退出”。单击窗口右上角只会隐藏到通知区域，不会退出程序。
+未进行商业代码签名的安装包首次运行时可能触发 Windows SmartScreen 提示。请确认文件来自本项目的 GitHub Release，并根据 `SHA256SUMS.txt` 校验文件完整性。
 
-## 隐私与文件位置
+### 如何完全退出应用
 
-程序只在本机使用 Windows 蓝牙连接和设备状态，不上传耳机数据。运行日志保存在：
+右键点击通知区域图标，选择“退出”。单击主窗口右上角只会隐藏到通知区域，不会退出程序。
+
+## 隐私与数据
+
+程序只在本机使用 Windows 蓝牙连接和设备状态，不上传耳机数据，也不会联网同步个人信息。
+
+运行日志保存在：
 
 ```text
 %LOCALAPPDATA%\YuandaoTws\logs
 ```
 
-卸载程序会清理该目录。如需反馈问题，请先删除蓝牙地址等个人信息，再提供日志内容。
+用户设置保存在：
+
+```text
+%LOCALAPPDATA%\YuandaoTws\settings.json
+```
+
+卸载程序会清理本软件创建的本地日志目录和开机启动项。
 
 ## 反馈
 
-欢迎通过 [Issues](https://github.com/Fat-kevin/NICEHCK_OriG-in/issues) 反馈问题。请尽量附上：Windows 版本、耳机固件版本、复现步骤和脱敏后的日志。
+欢迎通过 [Issues](https://github.com/Fat-kevin/NICEHCK_OriG-in/issues) 反馈问题。为了便于定位问题，请尽量附上：
+
+- Windows 版本；
+- 耳机固件版本；
+- 复现步骤；
+- 已脱敏的日志内容。
+
+请不要上传蓝牙地址、设备序列号或其他个人信息。
 
 ## 许可声明
 
