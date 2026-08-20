@@ -18,21 +18,28 @@ public sealed class DesktopThemeService
         IsDark = dark;
         var resources = System.Windows.Application.Current.Resources;
 
-        SetBrush(resources, "WindowBackgroundBrush", dark ? "#E91A2029" : "#EAF2F8FF");
-        SetBrush(resources, "GlassShellBrush", dark ? "#D91A2028" : "#24FFFFFF");
-        SetBrush(resources, "GlassPanelBrush", dark ? "#9A263242" : "#72FFFFFF");
-        SetBrush(resources, "GlassPanelStrongBrush", dark ? "#D13A4858" : "#B8FFFFFF");
-        SetBrush(resources, "GlassPanelSoftBrush", dark ? "#60374756" : "#38FFFFFF");
-        SetBrush(resources, "GlassPanelHoverBrush", dark ? "#B14A5A6C" : "#A6FFFFFF");
-        SetBrush(resources, "GlassBorderBrush", dark ? "#557D91A5" : "#58FFFFFF");
-        SetBrush(resources, "GlassBorderStrongBrush", dark ? "#8294A6B8" : "#88FFFFFF");
-        SetBrush(resources, "TrackBrush", dark ? "#5A788697" : "#3A6C7E93");
-        SetBrush(resources, "TextPrimaryBrush", dark ? "#F2F6FA" : "#152238");
-        SetBrush(resources, "TextSecondaryBrush", dark ? "#C1CFDC" : "#52647A");
-        SetBrush(resources, "TextMutedBrush", dark ? "#9EAFBF" : "#7D8DA1");
-        SetBrush(resources, "TextDisabledBrush", dark ? "#778999" : "#9BA9B8");
-        SetBrush(resources, "AccentSoftBrush", dark ? "#48618AB0" : "#4C82B9E8");
-        SetBrush(resources, "DividerBrush", dark ? "#3F8191A3" : "#48FFFFFF");
+        // 深色模式使用“深底 + 明亮卡片 + 高对比文字”的三层结构，避免玻璃背景把文字压成一片。
+        SetBrush(resources, "WindowBackgroundBrush", dark ? "#EC0B1016" : "#EAF2F8FF");
+        SetBrush(resources, "GlassShellBrush", dark ? "#E0101721" : "#24FFFFFF");
+        SetBrush(resources, "GlassSidebarBrush", dark ? "#D91B2734" : "#18FFFFFF");
+        SetBrush(resources, "GlassPanelBrush", dark ? "#F02C3948" : "#72FFFFFF");
+        SetBrush(resources, "GlassPanelStrongBrush", dark ? "#FA455463" : "#B8FFFFFF");
+        SetBrush(resources, "GlassPanelSoftBrush", dark ? "#BF344350" : "#38FFFFFF");
+        SetBrush(resources, "GlassPanelHoverBrush", dark ? "#F05A6A7A" : "#A6FFFFFF");
+        SetBrush(resources, "GlassBorderBrush", dark ? "#A08A9EAF" : "#58FFFFFF");
+        SetBrush(resources, "GlassBorderStrongBrush", dark ? "#E0D3DEE8" : "#88FFFFFF");
+        SetBrush(resources, "TrackBrush", dark ? "#C08A9EAF" : "#3A6C7E93");
+        SetBrush(resources, "TextPrimaryBrush", dark ? "#FFFFFF" : "#152238");
+        SetBrush(resources, "TextSecondaryBrush", dark ? "#F1F6FB" : "#52647A");
+        SetBrush(resources, "TextMutedBrush", dark ? "#CAD7E2" : "#7D8DA1");
+        SetBrush(resources, "TextDisabledBrush", dark ? "#B0C0CD" : "#9BA9B8");
+        SetBrush(resources, "AccentBrush", dark ? "#74C1FF" : "#287FD3");
+        SetBrush(resources, "AccentHoverBrush", dark ? "#A3D6FF" : "#176BBE");
+        SetBrush(resources, "AccentSoftBrush", dark ? "#8F4E9BD5" : "#4C82B9E8");
+        SetBrush(resources, "SuccessBrush", dark ? "#6DE8AD" : "#1B9A67");
+        SetBrush(resources, "WarningBrush", dark ? "#FFD16D" : "#D78322");
+        SetBrush(resources, "DangerBrush", dark ? "#FF8290" : "#D94B5B");
+        SetBrush(resources, "DividerBrush", dark ? "#B08DA2B5" : "#48FFFFFF");
 
         if (resources["FloatingShadow"] is System.Windows.Media.Effects.DropShadowEffect shadow && !shadow.IsFrozen)
         {
@@ -51,6 +58,23 @@ public sealed class DesktopThemeService
             };
         }
 
+        if (resources["CardShadow"] is System.Windows.Media.Effects.DropShadowEffect cardShadow && !cardShadow.IsFrozen)
+        {
+            cardShadow.Color = dark ? MediaColor.FromRgb(0x05, 0x0A, 0x10) : MediaColor.FromRgb(0x27, 0x44, 0x5D);
+            cardShadow.Opacity = dark ? 0.30 : 0.10;
+        }
+        else
+        {
+            resources["CardShadow"] = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 24,
+                ShadowDepth = 5,
+                Direction = 270,
+                Opacity = dark ? 0.30 : 0.10,
+                Color = dark ? MediaColor.FromRgb(0x05, 0x0A, 0x10) : MediaColor.FromRgb(0x27, 0x44, 0x5D),
+            };
+        }
+
         if (changed)
         {
             ThemeChanged?.Invoke(this, EventArgs.Empty);
@@ -62,7 +86,14 @@ public sealed class DesktopThemeService
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-            return key?.GetValue("AppsUseLightTheme") is int value && value == 0;
+            var raw = key?.GetValue("AppsUseLightTheme") ?? key?.GetValue("SystemUsesLightTheme");
+            return raw switch
+            {
+                int value => value == 0,
+                long value => value == 0,
+                string value when int.TryParse(value, out var parsed) => parsed == 0,
+                _ => false,
+            };
         }
         catch (Exception)
         {

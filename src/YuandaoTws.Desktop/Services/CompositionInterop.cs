@@ -1,11 +1,16 @@
 using System;
-using WinRT;
+using System.Runtime.InteropServices;
 
 namespace Windows.UI.Composition.Desktop;
 
-[WindowsRuntimeType]
-[global::System.Runtime.InteropServices.Guid("29E691FA-4567-4DCA-B319-D0F207EB6807")]
-public interface ICompositorDesktopInterop
+[ComImport]
+[Guid("29E691FA-4567-4DCA-B319-D0F207EB6807")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface ICompositorDesktopInterop
 {
-    void CreateDesktopWindowTarget(IntPtr hwndTarget, bool isTopmost, out IntPtr desktopWindowTarget);
+    [PreserveSig]
+    int CreateDesktopWindowTarget(
+        IntPtr hwndTarget,
+        [MarshalAs(UnmanagedType.Bool)] bool isTopmost,
+        out IntPtr desktopWindowTarget);
 }

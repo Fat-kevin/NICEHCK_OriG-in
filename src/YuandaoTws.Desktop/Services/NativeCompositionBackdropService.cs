@@ -19,8 +19,11 @@ public sealed class NativeCompositionBackdropService : IDisposable
     private Compositor? _compositor;
     private DispatcherQueueController? _dispatcherQueueController;
     private DesktopWindowTarget? _target;
+    private ContainerVisual? _root;
     private SpriteVisual? _blurVisual;
     private CompositionEffectBrush? _blurBrush;
+    private CompositionRoundedRectangleGeometry? _roundedGeometry;
+    private CompositionGeometricClip? _roundedClip;
 
     public bool IsActive => _target is not null && _blurVisual is not null;
 
@@ -42,9 +45,25 @@ public sealed class NativeCompositionBackdropService : IDisposable
             EnsureDispatcherQueue();
             _compositor ??= new Compositor();
 
-            var interop = _compositor.As<ICompositorDesktopInterop>();
-            interop.CreateDesktopWindowTarget(hwnd, false, out var targetAbi);
-            _target = DesktopWindowTarget.FromAbi(targetAbi);
+            var compositorUnknown = Marshal.GetIUnknownForObject(_compositor);
+            IntPtr interopPointer = IntPtr.Zero;
+            try
+            {
+                var interopIid = typeof(ICompositorDesktopInterop).GUID;
+                Marshal.ThrowExceptionForHR(Marshal.QueryInterface(compositorUnknown, ref interopIid, out interopPointer));
+                var interop = (ICompositorDesktopInterop)Marshal.GetObjectForIUnknown(interopPointer);
+                Marshal.ThrowExceptionForHR(interop.CreateDesktopWindowTarget(hwnd, false, out var targetAbi));
+                _target = DesktopWindowTarget.FromAbi(targetAbi);
+            }
+            finally
+            {
+                if (interopPointer != IntPtr.Zero)
+                {
+                    Marshal.Release(interopPointer);
+                }
+
+                Marshal.Release(compositorUnknown);
+            }
 
             // HostBackdropBrush 在当前窗口绘制前采样后方其它窗口内容。
             var source = new CompositionEffectSourceParameter("backdrop");
@@ -68,7 +87,11 @@ public sealed class NativeCompositionBackdropService : IDisposable
             var root = _compositor.CreateContainerVisual();
             root.RelativeSizeAdjustment = Vector2.One;
             root.Children.InsertAtTop(_blurVisual);
+            _root = root;
             _target.Root = root;
+            UpdateClip(window.ActualWidth > 0 ? window.ActualWidth : window.Width,
+                window.ActualHeight > 0 ? window.ActualHeight : window.Height,
+                26);
             return true;
         }
         catch (Exception)
@@ -84,6 +107,23 @@ public sealed class NativeCompositionBackdropService : IDisposable
         {
             _blurVisual.Opacity = opacity / 255f;
         }
+    }
+
+    /// <summary>将 Composition 背景裁剪到与窗口相同的圆角区域。</summary>
+    public void UpdateClip(double width, double height, double radius)
+    {
+        if (_compositor is null || _root is null || _blurVisual is null || width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        _roundedGeometry ??= _compositor.CreateRoundedRectangleGeometry();
+        _roundedGeometry.Size = new Vector2((float)width, (float)height);
+        _roundedGeometry.CornerRadius = new Vector2((float)radius, (float)radius);
+        _roundedClip ??= _compositor.CreateGeometricClip(_roundedGeometry);
+        // DesktopWindowTarget 下 ContainerVisual 的 Clip 在部分系统版本不会向下裁剪，
+        // 直接裁剪实际承载 HostBackdropBrush 的 SpriteVisual 才能消除矩形毛玻璃底。
+        _blurVisual.Clip = _roundedClip;
     }
 
     private void EnsureDispatcherQueue()
@@ -116,6 +156,9 @@ public sealed class NativeCompositionBackdropService : IDisposable
             _target.Root = null;
         }
 
+        _root = null;
+        _roundedClip = null;
+        _roundedGeometry = null;
         _blurVisual = null;
         _blurBrush = null;
         _target = null;

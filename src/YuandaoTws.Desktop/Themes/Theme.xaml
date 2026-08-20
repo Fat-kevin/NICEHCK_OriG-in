@@ -3,6 +3,7 @@
     <!-- 原生 Windows glass 设计系统：所有面板保留 alpha，让 DWM 背板的色彩能透过来。 -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#EAF2F8FF" />
     <SolidColorBrush x:Key="GlassShellBrush" Color="#18FFFFFF" />
+    <SolidColorBrush x:Key="GlassSidebarBrush" Color="#18FFFFFF" />
     <SolidColorBrush x:Key="GlassPanelBrush" Color="#66FFFFFF" />
     <SolidColorBrush x:Key="GlassPanelStrongBrush" Color="#98FFFFFF" />
     <SolidColorBrush x:Key="GlassPanelSoftBrush" Color="#2CFFFFFF" />
@@ -27,45 +28,44 @@
         <GradientStop Color="#1AFFFFFF" Offset="1" />
     </LinearGradientBrush>
     <DropShadowEffect x:Key="FloatingShadow" BlurRadius="18" ShadowDepth="7" Direction="270" Opacity="0.22" Color="#22415D" />
+    <DropShadowEffect x:Key="CardShadow" BlurRadius="24" ShadowDepth="5" Direction="270" Opacity="0.10" Color="#27445D" />
 
     <Style x:Key="EyebrowText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="11" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     </Style>
     <Style x:Key="PageTitle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="24" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
     <Style x:Key="SectionTitle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="16" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
     <Style x:Key="SectionCaption" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
     <Style x:Key="StatLabel" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
 
     <Style x:Key="GlassCard" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource GlassPanelBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource GlassPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="14" />
         <Setter Property="Padding" Value="16" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="Effect">
-            <Setter.Value><DropShadowEffect BlurRadius="24" ShadowDepth="5" Opacity="0.10" Color="#27445D" /></Setter.Value>
-        </Setter>
+        <Setter Property="Effect" Value="{DynamicResource CardShadow}" />
     </Style>
     <Style x:Key="InsetSurface" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource GlassPanelSoftBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource GlassPanelSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Padding" Value="12" />
@@ -73,7 +73,7 @@
 
     <Style x:Key="SegmentItem" TargetType="RadioButton">
         <Setter Property="Height" Value="36" />
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -86,15 +86,15 @@
                                           TextElement.FontSize="{TemplateBinding FontSize}" />
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="#46FFFFFF" /></Trigger>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource GlassPanelHoverBrush}" /></Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="{StaticResource GlassPanelStrongBrush}" />
-                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource GlassBorderStrongBrush}" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource GlassPanelStrongBrush}" />
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource GlassBorderStrongBrush}" />
                             <Setter TargetName="Root" Property="BorderThickness" Value="1" />
-                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.48" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.72" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -105,8 +105,8 @@
         <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="15,0" />
         <Setter Property="Margin" Value="0,0,7,4" />
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
-        <Setter Property="Background" Value="{StaticResource GlassPanelSoftBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource GlassPanelSoftBrush}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -114,20 +114,20 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
                     <Border x:Name="Root" Background="{TemplateBinding Background}"
-                            BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1"
+                            BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1"
                             CornerRadius="18" Padding="{TemplateBinding Padding}">
                         <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"
                                           TextElement.Foreground="{TemplateBinding Foreground}" />
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{StaticResource GlassPanelHoverBrush}" /></Trigger>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource GlassPanelHoverBrush}" /></Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter Property="Foreground" Value="White" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.48" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.72" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -143,7 +143,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
                     <Grid Background="Transparent" Width="48" Height="28">
-                        <Border x:Name="Track" Width="46" Height="24" CornerRadius="12" Background="{StaticResource TrackBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        <Border x:Name="Track" Width="46" Height="24" CornerRadius="12" Background="{DynamicResource TrackBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" />
                         <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="White" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0">
                             <Ellipse.Effect><DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.22" Color="#24435E" /></Ellipse.Effect>
                         </Ellipse>
@@ -151,11 +151,11 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Track" Property="Opacity" Value="0.82" /></Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}" />
                             <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
                             <Setter TargetName="Thumb" Property="Margin" Value="0,0,4,0" />
                         </Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.48" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.72" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -164,7 +164,7 @@
 
     <Style x:Key="BatteryBar" TargetType="ProgressBar">
         <Setter Property="Height" Value="6" /><Setter Property="Minimum" Value="0" /><Setter Property="Maximum" Value="100" />
-        <Setter Property="Background" Value="{StaticResource TrackBrush}" /><Setter Property="Foreground" Value="{StaticResource AccentBrush}" /><Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="{DynamicResource TrackBrush}" /><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /><Setter Property="BorderThickness" Value="0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
@@ -179,14 +179,14 @@
 
     <Style x:Key="WindowButton" TargetType="Button">
         <Setter Property="Width" Value="42" /><Setter Property="Height" Value="36" /><Setter Property="FontFamily" Value="Segoe MDL2 Assets" /><Setter Property="FontSize" Value="12" />
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="10"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" /></Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="#3AFFFFFF" /></Trigger>
-                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Root" Property="Background" Value="#66FFFFFF" /></Trigger>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource GlassPanelHoverBrush}" /></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource GlassPanelStrongBrush}" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -198,7 +198,7 @@
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="10"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" /></Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{StaticResource DangerBrush}" /><Setter Property="Foreground" Value="White" /></Trigger>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource DangerBrush}" /><Setter Property="Foreground" Value="White" /></Trigger>
                         <Trigger Property="IsPressed" Value="True"><Setter TargetName="Root" Property="Background" Value="#B83D4B" /><Setter Property="Foreground" Value="White" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -207,11 +207,11 @@
     </Style>
     <Style x:Key="ColorSwatchButton" TargetType="Button">
         <Setter Property="Width" Value="28" /><Setter Property="Height" Value="22" /><Setter Property="Padding" Value="0" />
-        <Setter Property="BorderBrush" Value="{StaticResource GlassBorderStrongBrush}" /><Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderStrongBrush}" /><Setter Property="BorderThickness" Value="1" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" /><Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7"><ContentPresenter /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Opacity" Value="0.78" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="TextActionButton" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="FontSize" Value="11" /><Setter Property="Padding" Value="2,0" /><Setter Property="Cursor" Value="Hand" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="FontSize" Value="11" /><Setter Property="Padding" Value="2,0" /><Setter Property="Cursor" Value="Hand" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
     </Style>
 </ResourceDictionary>
