@@ -19,6 +19,8 @@ public sealed class YuandaoChargingMonitorService : IDisposable
     private IDisposable? _dataSubscription;
     private IDisposable? _controlDataSubscription;
     private CancellationTokenSource? _pollCts;
+    private readonly object _publishGate = new();
+    private BatteryInfo? _lastPublishedBattery;
     private int _disposed;
 
     public YuandaoChargingMonitorService(
@@ -38,6 +40,11 @@ public sealed class YuandaoChargingMonitorService : IDisposable
         if (Volatile.Read(ref _disposed) != 0)
         {
             return;
+        }
+
+        lock (_publishGate)
+        {
+            _lastPublishedBattery = null;
         }
 
         _pollCts?.Cancel();
@@ -66,6 +73,11 @@ public sealed class YuandaoChargingMonitorService : IDisposable
         if (Volatile.Read(ref _disposed) != 0)
         {
             return;
+        }
+
+        lock (_publishGate)
+        {
+            _lastPublishedBattery = null;
         }
 
         _controlDataSubscription?.Dispose();
@@ -132,6 +144,16 @@ public sealed class YuandaoChargingMonitorService : IDisposable
 
     private void Publish(BatteryInfo battery)
     {
+        lock (_publishGate)
+        {
+            if (Equals(_lastPublishedBattery, battery))
+            {
+                return;
+            }
+
+            _lastPublishedBattery = battery;
+        }
+
         try
         {
             _batteryChanged.OnNext(battery);

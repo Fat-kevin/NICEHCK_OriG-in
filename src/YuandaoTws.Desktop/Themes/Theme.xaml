@@ -3,7 +3,6 @@
     <!-- 原生 Windows glass 设计系统：所有面板保留 alpha，让 DWM 背板的色彩能透过来。 -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#EAF2F8FF" />
     <SolidColorBrush x:Key="GlassShellBrush" Color="#18FFFFFF" />
-    <SolidColorBrush x:Key="GlassSidebarBrush" Color="#18FFFFFF" />
     <SolidColorBrush x:Key="GlassPanelBrush" Color="#66FFFFFF" />
     <SolidColorBrush x:Key="GlassPanelStrongBrush" Color="#98FFFFFF" />
     <SolidColorBrush x:Key="GlassPanelSoftBrush" Color="#2CFFFFFF" />
@@ -28,7 +27,6 @@
         <GradientStop Color="#1AFFFFFF" Offset="1" />
     </LinearGradientBrush>
     <DropShadowEffect x:Key="FloatingShadow" BlurRadius="18" ShadowDepth="7" Direction="270" Opacity="0.22" Color="#22415D" />
-    <DropShadowEffect x:Key="CardShadow" BlurRadius="24" ShadowDepth="5" Direction="270" Opacity="0.10" Color="#27445D" />
 
     <Style x:Key="EyebrowText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="11" />
@@ -61,7 +59,9 @@
         <Setter Property="CornerRadius" Value="14" />
         <Setter Property="Padding" Value="16" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="Effect" Value="{DynamicResource CardShadow}" />
+        <Setter Property="Effect">
+            <Setter.Value><DropShadowEffect BlurRadius="24" ShadowDepth="5" Opacity="0.10" Color="#27445D" /></Setter.Value>
+        </Setter>
     </Style>
     <Style x:Key="InsetSurface" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource GlassPanelSoftBrush}" />
@@ -94,7 +94,7 @@
                             <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.72" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.48" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -127,7 +127,7 @@
                             <Setter Property="Foreground" Value="White" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.72" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.48" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -155,7 +155,7 @@
                             <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
                             <Setter TargetName="Thumb" Property="Margin" Value="0,0,4,0" />
                         </Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.72" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.48" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

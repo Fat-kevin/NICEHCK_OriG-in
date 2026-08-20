@@ -10,6 +10,7 @@ public sealed class ConnectionToastService : IDisposable
 {
     private readonly DashboardViewModel _viewModel;
     private readonly MainWindow _mainWindow;
+    private readonly DesktopThemeService _theme;
     private readonly ILogger<ConnectionToastService> _logger;
     private ConnectionToastWindow? _window;
     private CancellationTokenSource? _dismissCts;
@@ -20,10 +21,12 @@ public sealed class ConnectionToastService : IDisposable
     public ConnectionToastService(
         DashboardViewModel viewModel,
         MainWindow mainWindow,
+        DesktopThemeService theme,
         ILogger<ConnectionToastService> logger)
     {
         _viewModel = viewModel;
         _mainWindow = mainWindow;
+        _theme = theme;
         _logger = logger;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _wasConnected = viewModel.IsConnected;
@@ -82,7 +85,7 @@ public sealed class ConnectionToastService : IDisposable
         }
 
         CancelTransition();
-        _window ??= new ConnectionToastWindow(_viewModel, ShowMainWindow);
+        _window ??= new ConnectionToastWindow(_viewModel, ShowMainWindow, _theme);
         _window.ReplayConnectionAnimation();
         _dismissCts?.Cancel();
         var dismiss = new CancellationTokenSource();

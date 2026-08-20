@@ -15,7 +15,6 @@ public sealed class WindowBackdropService : IDisposable
     private const int DwmwaWindowCornerPreference = 33;
     private const int DwmwaUseImmersiveDarkMode = 20;
     private const int DwmcpRound = 2;
-    private const int DwmcpDoNotRound = 1;
     private const uint DwmBbEnable = 0x1;
 
     private const int WcaAccentPolicy = 19;
@@ -45,7 +44,7 @@ public sealed class WindowBackdropService : IDisposable
         window.SizeChanged += OnWindowSizeChanged;
         window.Closed += OnWindowClosed;
         ApplyRoundedWindowRegion(window);
-        var round = UsesDwmRoundedCorners ? DwmcpRound : DwmcpDoNotRound;
+        var round = DwmcpRound;
         _ = DwmSetWindowAttribute(handle, DwmwaWindowCornerPreference, ref round, sizeof(int));
         ApplyTheme(window, IsSystemDarkMode());
 
@@ -55,7 +54,6 @@ public sealed class WindowBackdropService : IDisposable
             // 的其它应用内容，不是桌面壁纸；失败时再降级到 Accent Acrylic。
             if (_composition.TryApply(window, _opacity))
             {
-                ApplyRoundedWindowRegion(window);
                 return;
             }
 
@@ -66,7 +64,6 @@ public sealed class WindowBackdropService : IDisposable
                 _ = SetAccentPolicy(handle, AccentEnableBlurBehind, _opacity);
             }
 
-            ApplyRoundedWindowRegion(window);
             return;
         }
 
@@ -112,14 +109,7 @@ public sealed class WindowBackdropService : IDisposable
         try
         {
             using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
-            var raw = key?.GetValue("AppsUseLightTheme") ?? key?.GetValue("SystemUsesLightTheme");
-            return raw switch
-            {
-                int value => value == 0,
-                long value => value == 0,
-                string value when int.TryParse(value, out var parsed) => parsed == 0,
-                _ => false,
-            };
+            return key?.GetValue("AppsUseLightTheme") is int value && value == 0;
         }
         catch (Exception)
         {
@@ -127,9 +117,7 @@ public sealed class WindowBackdropService : IDisposable
         }
     }
 
-    private static bool UsesDwmRoundedCorners => OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
-
-    private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
+    private static void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (sender is Window window)
         {
@@ -149,48 +137,22 @@ public sealed class WindowBackdropService : IDisposable
         }
     }
 
-    private void ApplyRoundedWindowRegion(Window window)
+    private static void ApplyRoundedWindowRegion(Window window)
     {
         var handle = new WindowInteropHelper(window).Handle;
-        if (handle == IntPtr.Zero)
+        if (handle == IntPtr.Zero || window.ActualWidth <= 0 || window.ActualHeight <= 0)
         {
             return;
         }
 
         var dpi = PresentationSource.FromVisual(window)?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
-        var widthDip = window.ActualWidth > 0 ? window.ActualWidth : window.Width;
-        var heightDip = window.ActualHeight > 0 ? window.ActualHeight : window.Height;
-        if (widthDip <= 0 || heightDip <= 0)
-        {
-            return;
-        }
-
-        var width = Math.Max(1, (int)Math.Round(widthDip * dpi.M11));
-        var height = Math.Max(1, (int)Math.Round(heightDip * dpi.M22));
+        var width = Math.Max(1, (int)Math.Round(window.ActualWidth * dpi.M11));
+        var height = Math.Max(1, (int)Math.Round(window.ActualHeight * dpi.M22));
         var radius = Math.Max(2, (int)Math.Round(WindowCornerRadius * Math.Max(dpi.M11, dpi.M22)));
-
-        // Windows 11 的 DWM 圆角会在 Composition 合成之后裁剪最终窗口。
-        // 不再额外设置 HRGN，避免 Composition/DWM/WPF 三套边界叠加。
-        if (UsesDwmRoundedCorners)
-        {
-            if (_composition.IsActive)
-            {
-                _composition.UpdateClip(widthDip, heightDip, WindowCornerRadius);
-            }
-
-            return;
-        }
-
         var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
-        var regionResult = region == IntPtr.Zero ? 0 : SetWindowRgn(handle, region, true);
-        if (region != IntPtr.Zero && regionResult == 0)
+        if (region != IntPtr.Zero && SetWindowRgn(handle, region, true) == 0)
         {
             DeleteObject(region);
-        }
-
-        if (_composition.IsActive)
-        {
-            _composition.UpdateClip(widthDip, heightDip, WindowCornerRadius);
         }
     }
 

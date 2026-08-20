@@ -71,7 +71,10 @@ public sealed class SppDeviceSession : ISppDeviceSession
             _writeLock.Release();
         }
 
-        _logger.LogDebug("SPP 已发送 {Length} 字节：{Hex}", data.Length, Convert.ToHexString(data));
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("SPP 已发送 {Length} 字节：{Hex}", data.Length, Convert.ToHexString(data));
+        }
     }
 
     private async Task ReadLoopAsync(CancellationToken cancellationToken)

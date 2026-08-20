@@ -30,6 +30,8 @@ public partial class MainWindow : Window
         ConfigureDeviceIllustrations();
         Loaded += StartDeviceIllustrations;
         SourceInitialized += OnSourceInitialized;
+        _theme.ThemeChanged += OnThemeChanged;
+        Closed += OnClosed;
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -45,9 +47,19 @@ public partial class MainWindow : Window
         if (message == 0x001A)
         {
             _theme.Apply();
-            _backdrop.ApplyTheme(this, _theme.IsDark);
         }
         return IntPtr.Zero;
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        _backdrop.ApplyTheme(this, _theme.IsDark);
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _theme.ThemeChanged -= OnThemeChanged;
+        Closed -= OnClosed;
     }
 
     private void ConfigureDeviceIllustrations()

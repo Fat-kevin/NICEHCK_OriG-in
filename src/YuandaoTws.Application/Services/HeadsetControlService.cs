@@ -13,6 +13,12 @@ public sealed class HeadsetControlService : IDisposable
 {
     private static readonly TimeSpan CommandPacing = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan ResponseTimeout = TimeSpan.FromSeconds(3);
+    private static readonly ushort[] InitialRefreshOperations =
+    [
+        NiceHckOp.Version, NiceHckOp.Battery, NiceHckOp.AncQuery, NiceHckOp.EqQuery,
+        NiceHckOp.GameModeQuery, NiceHckOp.LowLatencyQuery, NiceHckOp.DualConnQuery,
+        NiceHckOp.InEarQuery, NiceHckOp.WindSuppressionQuery,
+    ];
     private readonly IDeviceProtocol _protocol;
     private readonly ILogger<HeadsetControlService> _logger;
     private readonly Subject<HeadsetControlState> _stateChanged = new();
@@ -90,12 +96,7 @@ public sealed class HeadsetControlService : IDisposable
 
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
-        foreach (var opCode in new[]
-        {
-            NiceHckOp.Version, NiceHckOp.Battery, NiceHckOp.AncQuery, NiceHckOp.EqQuery,
-            NiceHckOp.GameModeQuery, NiceHckOp.LowLatencyQuery, NiceHckOp.DualConnQuery,
-            NiceHckOp.InEarQuery, NiceHckOp.WindSuppressionQuery,
-        })
+        foreach (var opCode in InitialRefreshOperations)
         {
             await QueryAsync(opCode, cancellationToken);
             await Task.Delay(CommandPacing, cancellationToken);
@@ -180,22 +181,64 @@ public sealed class HeadsetControlService : IDisposable
     private void ApplyUpdate(HeadsetProtocolUpdate? update)
     {
         if (update is null) return;
-        var state = State with { UpdatedAt = DateTimeOffset.Now };
-        if (update.Battery is not null) state = state with { Battery = update.Battery };
-        if (update.Firmware is not null) state = state with { Firmware = update.Firmware };
-        if (update.AncMode is not null) state = state with { AncMode = update.AncMode };
-        if (update.Equalizer is not null) state = state with { Equalizer = update.Equalizer };
+        var state = State;
+        var changed = false;
+        if (update.Battery is not null && !Equals(state.Battery, update.Battery))
+        {
+            state = state with { Battery = update.Battery };
+            changed = true;
+        }
+
+        if (update.Firmware is not null && !Equals(state.Firmware, update.Firmware))
+        {
+            state = state with { Firmware = update.Firmware };
+            changed = true;
+        }
+
+        if (update.AncMode is not null && state.AncMode != update.AncMode)
+        {
+            state = state with { AncMode = update.AncMode };
+            changed = true;
+        }
+
+        if (update.Equalizer is not null && state.Equalizer != update.Equalizer)
+        {
+            state = state with { Equalizer = update.Equalizer };
+            changed = true;
+        }
+
         if (update.ToggleFeature is { } feature && update.ToggleValue is { } value)
-            state = feature switch
+        {
+            var current = feature switch
             {
-                HeadsetToggleFeature.GameMode => state with { GameModeEnabled = value },
-                HeadsetToggleFeature.LowLatency => state with { LowLatencyEnabled = value },
-                HeadsetToggleFeature.DualConnection => state with { DualConnectionEnabled = value },
-                HeadsetToggleFeature.InEarDetection => state with { InEarDetectionEnabled = value },
-                HeadsetToggleFeature.WindSuppression => state with { WindSuppressionEnabled = value },
-                _ => state,
+                HeadsetToggleFeature.GameMode => state.GameModeEnabled,
+                HeadsetToggleFeature.LowLatency => state.LowLatencyEnabled,
+                HeadsetToggleFeature.DualConnection => state.DualConnectionEnabled,
+                HeadsetToggleFeature.InEarDetection => state.InEarDetectionEnabled,
+                HeadsetToggleFeature.WindSuppression => state.WindSuppressionEnabled,
+                _ => null,
             };
-        State = state;
+            if (current != value)
+            {
+                state = feature switch
+                {
+                    HeadsetToggleFeature.GameMode => state with { GameModeEnabled = value },
+                    HeadsetToggleFeature.LowLatency => state with { LowLatencyEnabled = value },
+                    HeadsetToggleFeature.DualConnection => state with { DualConnectionEnabled = value },
+                    HeadsetToggleFeature.InEarDetection => state with { InEarDetectionEnabled = value },
+                    HeadsetToggleFeature.WindSuppression => state with { WindSuppressionEnabled = value },
+                    _ => state,
+                };
+                changed = true;
+            }
+        }
+
+        if (!changed)
+        {
+            return;
+        }
+
+        State = state with { UpdatedAt = DateTimeOffset.Now };
         PublishState(State);
     }
 

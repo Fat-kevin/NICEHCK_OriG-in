@@ -9,9 +9,17 @@ public enum BatteryColorMode
     Automatic,
 }
 
+public enum AppThemeMode
+{
+    System,
+    Light,
+    Dark,
+}
+
 public sealed class DesktopPreferences
 {
     public bool TaskbarWidgetEnabled { get; set; } = true;
+    public AppThemeMode ThemeMode { get; set; } = AppThemeMode.System;
     public BatteryColorMode BatteryColorMode { get; set; } = BatteryColorMode.Automatic;
     public string BatteryAccentColor { get; set; } = "#46A8EC";
     public string ChargingColor { get; set; } = "#50E5A0";
@@ -105,6 +113,7 @@ public sealed class DesktopPreferencesService
     private static DesktopPreferences Clone(DesktopPreferences value) => new()
     {
         TaskbarWidgetEnabled = value.TaskbarWidgetEnabled,
+        ThemeMode = value.ThemeMode,
         BatteryColorMode = value.BatteryColorMode,
         BatteryAccentColor = value.BatteryAccentColor,
         ChargingColor = value.ChargingColor,
@@ -112,6 +121,11 @@ public sealed class DesktopPreferencesService
 
     private static void Normalize(DesktopPreferences value)
     {
+        if (!Enum.IsDefined(value.ThemeMode))
+        {
+            value.ThemeMode = AppThemeMode.System;
+        }
+
         if (!Enum.IsDefined(value.BatteryColorMode))
         {
             value.BatteryColorMode = BatteryColorMode.Automatic;

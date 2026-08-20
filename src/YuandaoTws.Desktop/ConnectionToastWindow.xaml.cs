@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using YuandaoTws.Desktop.Services;
 using YuandaoTws.Desktop.ViewModels;
 
 namespace YuandaoTws.Desktop;
@@ -12,13 +13,21 @@ public partial class ConnectionToastWindow : Window
 {
     private readonly DashboardViewModel _viewModel;
     private readonly Action _showMainWindow;
+    private readonly WindowBackdropService _backdrop;
+    private readonly DesktopThemeService _theme;
     private bool _hasCase;
     private bool _isAnimatingLayout;
 
-    public ConnectionToastWindow(DashboardViewModel viewModel, Action showMainWindow)
+    public ConnectionToastWindow(
+        DashboardViewModel viewModel,
+        Action showMainWindow,
+        DesktopThemeService theme)
     {
         _viewModel = viewModel;
         _showMainWindow = showMainWindow;
+        _theme = theme;
+        // 弹窗是独立 HWND，不能复用主窗口的 Composition target。
+        _backdrop = new WindowBackdropService();
         InitializeComponent();
         DataContext = viewModel;
         ToastLeftImage.Source = LoadAsset("yuandao-earbud-left.png");
@@ -27,6 +36,9 @@ public partial class ConnectionToastWindow : Window
         ToastLeftImageNoCase.Source = ToastLeftImage.Source;
         ToastRightImageNoCase.Source = ToastRightImage.Source;
         ConfigureTransforms();
+        SourceInitialized += OnSourceInitialized;
+        _theme.ThemeChanged += OnThemeChanged;
+        Closed += OnClosed;
         Loaded += (_, _) =>
         {
             PositionAtBottomRight();
@@ -34,6 +46,27 @@ public partial class ConnectionToastWindow : Window
             StartFloatingAnimations();
         };
         SizeChanged += (_, _) => PositionAtBottomRight();
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        _backdrop.Apply(this);
+        _backdrop.ApplyTheme(this, _theme.IsDark);
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.HasShutdownStarted)
+        {
+            _backdrop.ApplyTheme(this, _theme.IsDark);
+        }
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _theme.ThemeChanged -= OnThemeChanged;
+        Closed -= OnClosed;
+        _backdrop.Dispose();
     }
 
     private void OpenMainWindow(object sender, RoutedEventArgs e)
